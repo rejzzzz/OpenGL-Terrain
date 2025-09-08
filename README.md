@@ -1,6 +1,7 @@
-cgm project - Terrain
+### cgm project - Terrain
 
 team:
-Daivik Wadhwani
-Sai Vivash Dara
-Rejwanul Hoque
+
+-   Daivik Wadhwani
+-   Sai Vivash Dara
+-   Rejwanul Hoque
