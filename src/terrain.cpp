@@ -3,8 +3,8 @@
 
 // Simple function to get height at (x, z)
 float getTerrainHeight(float x, float z) {
-    // Create wavy terrain using sine waves
-    return 2.0f * sin(x * 0.3f) * cos(z * 0.3f);
+    // Create gentle rolling hills with reduced amplitude
+    return 0.5f * sin(x * 0.2f) * cos(z * 0.2f);
 }
 
 void drawTerrain() {
