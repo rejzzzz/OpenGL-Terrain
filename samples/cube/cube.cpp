@@ -1,73 +1,88 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>       // <-- ADD THIS
+#include <glm/gtc/matrix_transform.hpp> // for radians(), lookAt(), etc.
 #include <iostream>
 #include <cmath>
+
 
 // Window dimensions
 const int WIDTH = 800;
 const int HEIGHT = 600;
 
-// Rotation variables
-float rotX = 0.0f;
-float rotY = 0.0f;
-float lastX = WIDTH / 2.0f;
-float lastY = HEIGHT / 2.0f;
-bool firstMouse = true;
-bool mousePressed = false;
+// Rotation and movement variables
+float autoRotY = 0.0f;
+float cubePosX = 0.0f, cubePosZ = 0.0f;
+int currentTarget = 0;
 
-// Mouse callback function
-void mouseCallback(GLFWwindow* window, double xpos, double ypos) {
-    if (!mousePressed) return;
-    
-    if (firstMouse) {
-        lastX = xpos;
-        lastY = ypos;
-        firstMouse = false;
+// Hexagon vertices (XZ plane)
+const int NUM_POINTS = 6;
+float hexagon[NUM_POINTS][2];
+
+// Camera orbit variables
+float yaw = 0.0f;        // Horizontal rotation
+float pitch = 20.0f;     // Vertical rotation
+float distance = 10.0f;  // Distance from center
+bool rightMousePressed = false;
+double lastX, lastY;
+
+// Generate hexagon points
+void generateHexagon(float radius = 4.0f) {
+    for (int i = 0; i < NUM_POINTS; i++) {
+        float angle = M_PI / 3 * i;
+        hexagon[i][0] = radius * cos(angle);
+        hexagon[i][1] = radius * sin(angle);
+    }
+}
+
+// Keyboard controls
+void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+        glfwSetWindowShouldClose(window, true);
+
+    if (key == GLFW_KEY_LEFT && action == GLFW_PRESS) {
+        currentTarget = (currentTarget - 1 + NUM_POINTS) % NUM_POINTS;
     }
 
-    float xOffset = xpos - lastX;
-    float yOffset = lastY - ypos; // Reversed since y-coordinates go from bottom to top
-    lastX = xpos;
-    lastY = ypos;
-
-    float sensitivity = 0.5f;
-    xOffset *= sensitivity;
-    yOffset *= sensitivity;
-
-    rotY += xOffset;
-    rotX += yOffset;
-
-    // Constrain pitch
-    if (rotX > 89.0f) rotX = 89.0f;
-    if (rotX < -89.0f) rotX = -89.0f;
+    if (key == GLFW_KEY_RIGHT && action == GLFW_PRESS) {
+        currentTarget = (currentTarget + 1) % NUM_POINTS;
+    }
 }
 
 // Mouse button callback
 void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
-    if (button == GLFW_MOUSE_BUTTON_LEFT) {
+    if (button == GLFW_MOUSE_BUTTON_RIGHT) {
         if (action == GLFW_PRESS) {
-            mousePressed = true;
-            firstMouse = true;
+            rightMousePressed = true;
+            glfwGetCursorPos(window, &lastX, &lastY);
         } else if (action == GLFW_RELEASE) {
-            mousePressed = false;
+            rightMousePressed = false;
         }
     }
 }
 
-// Key callback for additional controls
-void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
-    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
-        glfwSetWindowShouldClose(window, true);
-    }
-    if (key == GLFW_KEY_R && action == GLFW_PRESS) {
-        // Reset rotation
-        rotX = 0.0f;
-        rotY = 0.0f;
-    }
+// Mouse movement callback (for camera)
+void mouseCallback(GLFWwindow* window, double xpos, double ypos) {
+    if (!rightMousePressed) return;
+
+    float xoffset = xpos - lastX;
+    float yoffset = lastY - ypos; // reversed y
+    lastX = xpos;
+    lastY = ypos;
+
+    float sensitivity = 0.2f;
+    xoffset *= sensitivity;
+    yoffset *= sensitivity;
+
+    yaw += xoffset;
+    pitch += yoffset;
+
+    if (pitch > 89.0f) pitch = 89.0f;
+    if (pitch < -89.0f) pitch = -89.0f;
 }
 
+// Draw cube (same as before)
 void drawCube() {
-    // Cube vertices (each face has different colors)
     glBegin(GL_QUADS);
     
     // Front face (red)
@@ -115,81 +130,109 @@ void drawCube() {
     glEnd();
 }
 
+// Manual gluLookAt equivalent
+void setCamera(float eyeX, float eyeY, float eyeZ,
+               float centerX, float centerY, float centerZ,
+               float upX, float upY, float upZ) {
+    float forward[3] = { centerX - eyeX, centerY - eyeY, centerZ - eyeZ };
+    float up[3] = { upX, upY, upZ };
+    float fMag = sqrt(forward[0]*forward[0] + forward[1]*forward[1] + forward[2]*forward[2]);
+    forward[0] /= fMag; forward[1] /= fMag; forward[2] /= fMag;
+
+    float s[3] = {
+        forward[1]*up[2] - forward[2]*up[1],
+        forward[2]*up[0] - forward[0]*up[2],
+        forward[0]*up[1] - forward[1]*up[0]
+    };
+    float sMag = sqrt(s[0]*s[0] + s[1]*s[1] + s[2]*s[2]);
+    s[0]/=sMag; s[1]/=sMag; s[2]/=sMag;
+
+    float u[3] = {
+        s[1]*forward[2] - s[2]*forward[1],
+        s[2]*forward[0] - s[0]*forward[2],
+        s[0]*forward[1] - s[1]*forward[0]
+    };
+
+    float m[16] = {
+        s[0],  u[0], -forward[0], 0,
+        s[1],  u[1], -forward[1], 0,
+        s[2],  u[2], -forward[2], 0,
+        0,     0,     0,          1
+    };
+    glMultMatrixf(m);
+    glTranslatef(-eyeX, -eyeY, -eyeZ);
+}
+
 int main() {
-    // Initialize GLFW
     if (!glfwInit()) {
-        std::cerr << "Failed to initialize GLFW" << std::endl;
+        std::cerr << "Failed to initialize GLFW\n";
         return -1;
     }
 
-    // Create window
-    GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Interactive Rotating Cube", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Hexagon Cube with Camera", NULL, NULL);
     if (!window) {
-        std::cerr << "Failed to create GLFW window" << std::endl;
+        std::cerr << "Failed to create GLFW window\n";
         glfwTerminate();
         return -1;
     }
 
     glfwMakeContextCurrent(window);
+    glewInit();
 
-    // Initialize GLEW
-    if (glewInit() != GLEW_OK) {
-        std::cerr << "Failed to initialize GLEW" << std::endl;
-        return -1;
-    }
-
-    // Set callbacks
+    glfwSetKeyCallback(window, keyCallback);
     glfwSetCursorPosCallback(window, mouseCallback);
     glfwSetMouseButtonCallback(window, mouseButtonCallback);
-    glfwSetKeyCallback(window, keyCallback);
 
-    // Enable depth testing
     glEnable(GL_DEPTH_TEST);
-    
-    // Set up perspective projection
+
+    // Perspective setup
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    
-    // Create perspective projection
-    float fov = 45.0f;
-    float aspect = (float)WIDTH / (float)HEIGHT;
-    float near = 0.1f;
-    float far = 100.0f;
-    
+    float fov = 45.0f, aspect = (float)WIDTH / HEIGHT, near = 0.1f, far = 100.0f;
     float fH = tan(fov / 360.0f * M_PI) * near;
     float fW = fH * aspect;
     glFrustum(-fW, fW, -fH, fH, near, far);
-    
     glMatrixMode(GL_MODELVIEW);
 
-    std::cout << "Controls:" << std::endl;
-    std::cout << "- Left click and drag to rotate the cube" << std::endl;
-    std::cout << "- Press R to reset rotation" << std::endl;
-    std::cout << "- Press ESC to exit" << std::endl;
+    generateHexagon(4.0f);
 
-    // Main render loop
+    std::cout << "Controls:\n- Left/Right: move along hex path\n- Right Mouse Drag: rotate camera\n- ESC: exit\n";
+
     while (!glfwWindowShouldClose(window)) {
-        // Clear the screen
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClearColor(0.15f, 0.2f, 0.25f, 1.0f);
 
-        // Set up model view matrix
         glLoadIdentity();
-        glTranslatef(0.0f, 0.0f, -5.0f); // Move cube away from camera
-        
-        // Apply rotations
-        glRotatef(rotX, 1.0f, 0.0f, 0.0f);
-        glRotatef(rotY, 0.0f, 1.0f, 0.0f);
 
-        // Draw the cube
+        // Camera orbit around cube
+        float camX = distance * cos(glm::radians(pitch)) * sin(glm::radians(yaw));
+        float camY = distance * sin(glm::radians(pitch));
+        float camZ = distance * cos(glm::radians(pitch)) * cos(glm::radians(yaw));
+
+        setCamera(camX, camY, camZ, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
+
+        // Smoothly move cube toward current vertex
+        float targetX = hexagon[currentTarget][0];
+        float targetZ = hexagon[currentTarget][1];
+        cubePosX += (targetX - cubePosX) * 0.02f;
+        cubePosZ += (targetZ - cubePosZ) * 0.02f;
+
+        // Draw cube
+        glPushMatrix();
+        glTranslatef(cubePosX, 0.0f, cubePosZ);
+
+        // Slower auto rotation
+        autoRotY += 0.1f;
+        if (autoRotY > 360.0f) autoRotY -= 360.0f;
+        glRotatef(autoRotY, 0.0f, 1.0f, 0.0f);
+
         drawCube();
+        glPopMatrix();
 
-        // Swap buffers and poll events
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
-    // Cleanup
     glfwTerminate();
     return 0;
 }
