@@ -36,8 +36,8 @@ g++ -Iinclude \
 	src/utils.cpp \
 	src/objects/MovableObject.cpp \
 	src/camera/Camera.cpp \
+	src/skybox/skybox.cpp \
 	-lGL -lGLU -lGLEW -lglfw -o terrain
-./terrain
 ```
 
 ## Project Structure
