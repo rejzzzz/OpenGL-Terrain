@@ -3,8 +3,27 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
 
+#include <vector>
+#include <string>
+#include "skybox/skybox.h"
+
 PlayScene::PlayScene()
-    : m_Player(0.0f,0.0f,0.0f), m_Camera(&m_Player) {}
+    : m_Player(0.0f,0.0f,0.0f), m_Camera(&m_Player) {
+        std::vector<std::string> faces;
+    
+    // This is the path to the folder you created in the last step
+    std::string skyboxDir = "assets/skybox/";
+
+    // The order MUST be: Right, Left, Top, Bottom, Front, Back
+    faces.push_back(skyboxDir + "right.png");
+    faces.push_back(skyboxDir + "left.png");
+    faces.push_back(skyboxDir + "top.png");
+    faces.push_back(skyboxDir + "bottom.png");
+    faces.push_back(skyboxDir + "front.png");
+    faces.push_back(skyboxDir + "back.png");
+    
+    loadSkybox(faces);
+    }
 
 void PlayScene::OnAttach(GLFWwindow* window) {
     m_Window = window;
@@ -68,9 +87,22 @@ void PlayScene::OnUpdate(float dt) {
 }
 
 void PlayScene::OnRender() {
-    glLoadIdentity();
-    glm::vec3 eye = m_Camera.GetPosition();
+    // --- THIS IS THE MOST IMPORTANT FIX ---
+    // Clear both the color and the depth buffer from the last frame.
+    // This stops the "blue bar" and allows the terrain to draw correctly.
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    // --- END OF FIX ---
+
+    glLoadIdentity(); // Resets the matrix
+
+    // Calculate the camera's target point ONCE
     glm::vec3 center = m_Player.GetPosition(); center.y += 1.0f;
+    
+    // Draw the skybox first
+    drawSkybox(m_Camera, center);
+
+    // This is your original code to set up the main camera for the scene
+    glm::vec3 eye = m_Camera.GetPosition();
     glm::vec3 up(0,1,0);
     gluLookAt(eye.x, eye.y, eye.z, center.x, center.y, center.z, up.x, up.y, up.z);
 
