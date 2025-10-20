@@ -36,6 +36,7 @@ void loadSkybox(const std::vector<std::string>& faces) {
     for (unsigned int i = 0; i < faces.size(); i++) {
         unsigned char *data = stbi_load(faces[i].c_str(), &width, &height, &nrChannels, 0);
         if (data) {
+            printf("Loaded %s (%dx%d, %d channels)\n", faces[i].c_str(), width, height, nrChannels);
             
             // --- THIS IS THE FIX ---
             // Detect the image format (RGB vs RGBA)
@@ -51,11 +52,13 @@ void loadSkybox(const std::vector<std::string>& faces) {
             }
             
             // Use the detected 'format' for both the internal format and the source format
+            if (nrChannels == 4) format = GL_RGB;
             glTexImage2D(targets[i], 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
             // --- END OF FIX ---
 
             stbi_image_free(data);
         } else {
+            printf("Failed to load: %s\n", faces[i].c_str());
             // This is the error you're looking for in Solution 1
             printf("Skybox texture failed to load: %s\n", faces[i].c_str());
             stbi_image_free(data);
@@ -68,19 +71,26 @@ void loadSkybox(const std::vector<std::string>& faces) {
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    
 }
 
 // --- THIS LINE IS MODIFIED ---
 void drawSkybox(const Camera& camera, const glm::vec3& center) {
+    // --- Save all relevant OpenGL states ---
+    glPushAttrib(GL_ENABLE_BIT | GL_TEXTURE_BIT | GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
     // --- State Setup ---
     glDepthMask(GL_FALSE);
     glDisable(GL_LIGHTING);
     glDisable(GL_DEPTH_TEST); 
+    glDisable(GL_CULL_FACE);
+    glDisable(GL_TEXTURE_2D);
     
     // --- THIS IS THE FIX ---
-    // Reset the color to white. This stops the skybox from being
-    // tinted by whatever color was used to draw the player.
-    glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+    // Explicitly disable blending (transparency)
+    glDisable(GL_BLEND);
+    
+    glColor4f(1.0f, 1.0f, 1.0f, 1.0f); // Set color to white
     
     glEnable(GL_TEXTURE_CUBE_MAP);
     glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxTextureID);
@@ -88,7 +98,7 @@ void drawSkybox(const Camera& camera, const glm::vec3& center) {
     glMatrixMode(GL_MODELVIEW);
     glPushMatrix();
 
-    // --- The Camera Trick (Corrected) ---
+    // --- The Camera Trick ---
     glm::vec3 eye = camera.GetPosition();
     glm::vec3 up(0, 1, 0);                
     glm::vec3 lookDirection = center - eye;
@@ -98,7 +108,7 @@ void drawSkybox(const Camera& camera, const glm::vec3& center) {
               up.x, up.y, up.z);
     
     // --- Draw the Cube ---
-    float size = 100.0f;
+    float size = 50.0f;
 
     glBegin(GL_QUADS);
         // Positive X (Right)
@@ -120,23 +130,22 @@ void drawSkybox(const Camera& camera, const glm::vec3& center) {
         glTexCoord3f(-1.0f, -1.0f,  1.0f); glVertex3f(-size, -size,  size);
         glTexCoord3f( 1.0f, -1.0f,  1.0f); glVertex3f( size, -size,  size);
         glTexCoord3f( 1.0f, -1.0f, -1.0f); glVertex3f( size, -size, -size);
-        glTexCoord3f(-1.0f, -1.0f, -1.0f); glVertex3f(-size, -size, -1.0f);
+        glTexCoord3f(-1.0f, -1.0f, -1.0f); glVertex3f(-size, -size, -size);
         // Positive Z (Front)
         glTexCoord3f( 1.0f, -1.0f, 1.0f); glVertex3f( size, -size, size);
         glTexCoord3f(-1.0f, -1.0f, 1.0f); glVertex3f(-size, -size, size);
         glTexCoord3f(-1.0f,  1.0f, 1.0f); glVertex3f(-size,  size, size);
         glTexCoord3f( 1.0f,  1.0f, 1.0f); glVertex3f( size,  size, size);
         // Negative Z (Back)
-        glTexCoord3f(-1.0f, -1.0f, -1.0f); glVertex3f(-size, -size, -1.0f);
-        glTexCoord3f( 1.0f, -1.0f, -1.0f); glVertex3f( size, -size, -1.0f);
+        glTexCoord3f(-1.0f, -1.0f, -1.0f); glVertex3f(-size, -size, -size);
+        glTexCoord3f( 1.0f, -1.0f, -1.0f); glVertex3f( size, -size, -size);
         glTexCoord3f( 1.0f,  1.0f, -1.0f); glVertex3f( size,  size, -1.0f);
         glTexCoord3f(-1.0f,  1.0f, -1.0f); glVertex3f(-size,  size, -1.0f);
     glEnd();
 
     // --- State Restore ---
     glPopMatrix(); 
-    glDisable(GL_TEXTURE_CUBE_MAP);
-    glEnable(GL_DEPTH_TEST);
-    glEnable(GL_LIGHTING); 
-    glDepthMask(GL_TRUE); 
+    
+    // --- Restore all the states we saved at the beginning ---
+    glPopAttrib();
 }
