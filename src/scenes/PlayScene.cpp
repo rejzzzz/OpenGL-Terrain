@@ -3,8 +3,27 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
 
+#include <vector>
+#include <string>
+#include "skybox/skybox.h"
+
 PlayScene::PlayScene()
-    : m_Player(0.0f,0.0f,0.0f), m_Camera(&m_Player) {}
+    : m_Player(0.0f,0.0f,0.0f), m_Camera(&m_Player) {
+        std::vector<std::string> faces;
+    
+    // This is the path to the folder you created in the last step
+    std::string skyboxDir = "assets/skybox/";
+
+    // The order MUST be: Right, Left, Top, Bottom, Front, Back
+    faces.push_back(skyboxDir + "right.png");
+    faces.push_back(skyboxDir + "left.png");
+    faces.push_back(skyboxDir + "top.png");
+    faces.push_back(skyboxDir + "bottom.png");
+    faces.push_back(skyboxDir + "front.png");
+    faces.push_back(skyboxDir + "back.png");
+    
+    loadSkybox(faces);
+    }
 
 void PlayScene::OnAttach(GLFWwindow* window) {
     m_Window = window;
@@ -69,8 +88,16 @@ void PlayScene::OnUpdate(float dt) {
 
 void PlayScene::OnRender() {
     glLoadIdentity();
-    glm::vec3 eye = m_Camera.GetPosition();
+
+    // Calculate the camera's target point ONCE
     glm::vec3 center = m_Player.GetPosition(); center.y += 1.0f;
+
+    // --- THIS LINE IS MODIFIED ---
+    // Draw the skybox first, passing in the camera AND the center point
+    drawSkybox(m_Camera, center);
+
+    // Now set up the main scene camera using the variables we already have
+    glm::vec3 eye = m_Camera.GetPosition();
     glm::vec3 up(0,1,0);
     gluLookAt(eye.x, eye.y, eye.z, center.x, center.y, center.z, up.x, up.y, up.z);
 
