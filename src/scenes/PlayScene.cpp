@@ -23,13 +23,18 @@ PlayScene::PlayScene()
     faces.push_back(skyboxDir + "back.png");
     
     loadSkybox(faces);
-    }
+}
 
 void PlayScene::OnAttach(GLFWwindow* window) {
     m_Window = window;
     int w,h; glfwGetFramebufferSize(window,&w,&h);
     OnFramebufferResize(w,h);
     std::cout << "Controls:\n  WASD move\n  RMB drag orbit\n  Scroll zoom\n  ESC quit\n";
+
+    // Add a visible mountain to the terrain within the current grid range (~-16..16)
+    terrainClearMountains();
+    terrainAddMountain(glm::vec2(5.0f, 5.0f), 5.5f, 3.0f);
+    terrainAddMountain(glm::vec2(-8.0f, 3.0f), 4.0f, 2.0f);
 }
 
 void PlayScene::OnFramebufferResize(int width, int height) {
@@ -111,3 +116,4 @@ void PlayScene::OnRender() {
     drawTrees();
     m_Player.Draw();
 }
+// (Removed stray example code; buildings are drawn via drawBuildings())

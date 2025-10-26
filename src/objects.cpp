@@ -70,10 +70,19 @@ void drawTrees() {
 }
 
 void drawBuildings() {
-    float x = -4.0f, z = -4.0f;
-    float y = getTerrainHeight(x, z);
+    // Building 1
+    float x1 = -4.0f, z1 = -4.0f;
+    float y1 = getTerrainHeight(x1, z1);
     glPushMatrix();
-    glTranslatef(x, y, z);
+    glTranslatef(x1, y1, z1);
     drawCube(2.0f, 3.0f, 2.0f); // building
+    glPopMatrix();
+
+    // Building 2 (new): place near the mountain but slightly offset
+    float x2 = 6.0f, z2 = 4.0f;
+    float y2 = getTerrainHeight(x2, z2);
+    glPushMatrix();
+    glTranslatef(x2, y2, z2);
+    drawCube(1.8f, 2.5f, 1.8f);
     glPopMatrix();
 }

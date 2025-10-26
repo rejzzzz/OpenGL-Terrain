@@ -1,19 +1,50 @@
 #include <GL/glew.h>
 #include <cmath>
+#include <vector>
+#include <algorithm>
+#include <glm/glm.hpp>
+#include "terrain.h"
 
-// Simple function to get height at (x, z)
+// Internal mountain data
+struct Mountain {
+    glm::vec2 center; // (x, z)
+    float radius;
+    float height;
+};
+
+static std::vector<Mountain> s_mountains;
+
+void terrainAddMountain(const glm::vec2& center, float radius, float height) {
+    s_mountains.push_back(Mountain{center, radius, height});
+}
+
+void terrainClearMountains() {
+    s_mountains.clear();
+}
+
+// Base rolling hills + optional mountain domes
 float getTerrainHeight(float x, float z) {
-    // Create gentle rolling hills with reduced amplitude
-    return 0.5f * sin(x * 0.2f) * cos(z * 0.2f);
+    // Base gentle hills
+    float y = 0.5f * std::sin(x * 0.2f) * std::cos(z * 0.2f);
+
+    // Add mountains with smooth dome falloff
+    for (const auto& m : s_mountains) {
+        float dx = x - m.center.x;
+        float dz = z - m.center.y;
+        float dist = std::sqrt(dx*dx + dz*dz);
+        if (dist < m.radius) {
+            float t = 1.0f - (dist / m.radius); // 1 at center -> 0 at edge
+            y += m.height * (t * t);            // quadratic falloff
+        }
+    }
+    return y;
 }
 
 void drawTerrain() {
     const int SIZE = 64;        // Grid size (64x64)
     const float SPACING = 0.5f; // Distance between vertices
 
-    // Enable smooth shading
     glShadeModel(GL_SMOOTH);
-
     glBegin(GL_QUADS);
     for (int i = -SIZE/2; i < SIZE/2; ++i) {
         for (int j = -SIZE/2; j < SIZE/2; ++j) {
@@ -27,11 +58,11 @@ void drawTerrain() {
             float y21 = getTerrainHeight(x2, z1);
             float y22 = getTerrainHeight(x2, z2);
 
-            // Color based on height
-            float color = 0.2f + 0.6f * ((y11 + y12 + y21 + y22) / 4.0f + 2.0f) / 4.0f;
-            glColor3f(0.0f, color, 0.0f); // Greenish
+            // Simple color variation by average height
+            float avg = (y11 + y12 + y21 + y22) * 0.25f;
+            float color = std::clamp(0.2f + 0.3f + avg * 0.2f, 0.1f, 0.9f);
+            glColor3f(0.0f, color, 0.0f);
 
-            // Draw quad (two triangles would be better, but quads work here)
             glVertex3f(x1, y11, z1);
             glVertex3f(x2, y21, z1);
             glVertex3f(x2, y22, z2);
