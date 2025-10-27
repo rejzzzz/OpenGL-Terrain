@@ -4,5 +4,6 @@
 
 void drawBuildings();
 void drawTrees();
+void drawRoads();
 
 #endif
