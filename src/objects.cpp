@@ -71,76 +71,99 @@ void drawTrees() {
     drawTree(2.0f, -7.0f);
 }
 
-void drawBuildings() {
-    // Building 1
-    float x1 = -4.0f, z1 = -4.0f;
-    float y1 = getTerrainHeight(x1, z1);
-    glPushMatrix();
-    glTranslatef(x1, y1, z1);
-    drawCube(2.0f, 3.0f, 2.0f); // building
-    // Add simple windows on the front face (facing +Z)
-    // Building dimensions
-    float bw = 2.0f; float bh = 3.0f; float bd = 2.0f;
-    // Front face is at +d2 (since drawCube was centered)
-    float w2 = bw * 0.5f;
-    float h2 = bh * 0.5f;
-    float d2 = bd * 0.5f;
+// forward declaration for helper defined later
+static void drawAllBuildings();
 
-    // Draw a grid of windows: 2 columns x 3 rows
-    glColor3f(0.95f, 0.95f, 0.6f); // warm window light
-    for (int row = 0; row < 3; ++row) {
-        for (int col = 0; col < 2; ++col) {
-            float wx = -w2 + 0.5f + col * 0.9f; // local x
-            float wy = -h2 + 0.6f + row * 0.9f; // local y
-            float ww = 0.35f, wh = 0.4f;
+void drawBuildings() {
+    // Draw all buildings using the centralized helper
+    drawAllBuildings();
+}
+
+// Helper: draw a building at world x,z with width, height, depth and window color
+static void drawBuildingAt(float wx, float wz, float bw, float bh, float bd, const glm::vec3 &windowColor) {
+    float wy = getTerrainHeight(wx, wz);
+    glPushMatrix();
+    glTranslatef(wx, wy, wz);
+
+    // building body
+    glColor3f(0.6f, 0.6f, 0.6f);
+    drawCube(bw, bh, bd);
+
+    float halfW = bw * 0.5f;
+    float halfH = bh * 0.5f;
+    float halfD = bd * 0.5f;
+
+    // window grid parameters
+    int rows = std::max(1, (int)std::floor(bh));
+    int cols = 2;
+    float ww = std::min(0.5f, bw * 0.25f);
+    float wh = std::min(0.6f, bh * 0.18f);
+
+    glColor3f(windowColor.r, windowColor.g, windowColor.b);
+
+    // Front (+Z) and Back (-Z)
+    for (int row = 0; row < rows; ++row) {
+        for (int col = 0; col < cols; ++col) {
+            float lx = -halfW + 0.6f + col * (bw - 1.2f);
+            float ly = -halfH + 0.6f + row * 0.9f;
+            float zoff = halfD + 0.002f;
+            // front
             glBegin(GL_QUADS);
-            // window quad placed slightly in front of face to avoid z-fighting
-            float zoff = d2 + 0.001f;
-            glVertex3f(wx - ww*0.5f, wy - wh*0.5f,  zoff);
-            glVertex3f(wx + ww*0.5f, wy - wh*0.5f,  zoff);
-            glVertex3f(wx + ww*0.5f, wy + wh*0.5f,  zoff);
-            glVertex3f(wx - ww*0.5f, wy + wh*0.5f,  zoff);
+            glVertex3f(lx - ww*0.5f, ly - wh*0.5f,  zoff);
+            glVertex3f(lx + ww*0.5f, ly - wh*0.5f,  zoff);
+            glVertex3f(lx + ww*0.5f, ly + wh*0.5f,  zoff);
+            glVertex3f(lx - ww*0.5f, ly + wh*0.5f,  zoff);
+            glEnd();
+
+            // back (mirror x)
+            glBegin(GL_QUADS);
+            glVertex3f(-lx - ww*0.5f, ly - wh*0.5f, -zoff);
+            glVertex3f(-lx + ww*0.5f, ly - wh*0.5f, -zoff);
+            glVertex3f(-lx + ww*0.5f, ly + wh*0.5f, -zoff);
+            glVertex3f(-lx - ww*0.5f, ly + wh*0.5f, -zoff);
             glEnd();
         }
     }
-    glPopMatrix();
 
-    // Additional buildings: create a small cluster of 4 extra buildings
-    struct Bld { float x,z,w,h,d; } extra[] = {
-        { 8.5f,  6.5f, 1.6f, 2.0f, 1.6f },
-        { -6.0f, -2.0f, 2.2f, 3.2f, 2.0f },
-        { 3.0f, -9.0f,  1.4f, 1.8f, 1.4f },
-        { -10.0f, 8.0f, 2.5f, 3.5f, 2.2f }
-    };
-    for (const auto &b : extra) {
-        float bx = b.x, bz = b.z;
-        float by = getTerrainHeight(bx, bz);
-        glPushMatrix();
-        glTranslatef(bx, by, bz);
-        drawCube(b.w, b.h, b.d);
+    // Left (-X) and Right (+X)
+    for (int row = 0; row < rows; ++row) {
+        for (int col = 0; col < cols; ++col) {
+            float lz = -halfD + 0.6f + col * (bd - 1.2f);
+            float ly = -halfH + 0.6f + row * 0.9f;
+            float xoff = halfW + 0.002f;
+            // right (+X)
+            glBegin(GL_QUADS);
+            glVertex3f( xoff, ly - wh*0.5f, lz - ww*0.5f);
+            glVertex3f( xoff, ly - wh*0.5f, lz + ww*0.5f);
+            glVertex3f( xoff, ly + wh*0.5f, lz + ww*0.5f);
+            glVertex3f( xoff, ly + wh*0.5f, lz - ww*0.5f);
+            glEnd();
 
-        // windows: attempt 2 columns x rows depending on height
-        float bwid = b.w, bht = b.h, bdep = b.d;
-        float halfW = bwid * 0.5f; float halfH = bht * 0.5f; float halfD = bdep * 0.5f;
-        int rows = (int)std::max(1.0f, std::floor(bht));
-        int cols = 2;
-        glColor3f(0.95f, 0.9f, 0.55f);
-        for (int row = 0; row < rows; ++row) {
-            for (int col = 0; col < cols; ++col) {
-                float wx = -halfW + 0.6f + col * (bwid - 1.2f);
-                float wy = -halfH + 0.6f + row * 0.9f;
-                float ww = 0.35f, wh = 0.4f;
-                glBegin(GL_QUADS);
-                float zoff = halfD + 0.001f;
-                glVertex3f(wx - ww*0.5f, wy - wh*0.5f,  zoff);
-                glVertex3f(wx + ww*0.5f, wy - wh*0.5f,  zoff);
-                glVertex3f(wx + ww*0.5f, wy + wh*0.5f,  zoff);
-                glVertex3f(wx - ww*0.5f, wy + wh*0.5f,  zoff);
-                glEnd();
-            }
+            // left (-X)
+            glBegin(GL_QUADS);
+            glVertex3f(-xoff, ly - wh*0.5f, -lz - ww*0.5f);
+            glVertex3f(-xoff, ly - wh*0.5f, -lz + ww*0.5f);
+            glVertex3f(-xoff, ly + wh*0.5f, -lz + ww*0.5f);
+            glVertex3f(-xoff, ly + wh*0.5f, -lz - ww*0.5f);
+            glEnd();
         }
-        glPopMatrix();
     }
+
+    glPopMatrix();
+}
+
+// Replace previous ad-hoc draws with calls to drawBuildingAt
+// We'll draw the main buildings and extra cluster
+static void drawAllBuildings() {
+    // Main building 1
+    drawBuildingAt(-4.0f, -4.0f, 2.0f, 3.0f, 2.0f, glm::vec3(0.95f,0.95f,0.6f));
+    // Building 2
+    drawBuildingAt(6.0f, 4.0f, 1.8f, 2.5f, 1.8f, glm::vec3(0.9f,0.9f,0.5f));
+    // Extra cluster
+    drawBuildingAt(8.5f,  6.5f, 1.6f, 2.0f, 1.6f, glm::vec3(0.95f,0.9f,0.55f));
+    drawBuildingAt(-6.0f, -2.0f, 2.2f, 3.2f, 2.0f, glm::vec3(0.95f,0.9f,0.55f));
+    drawBuildingAt(3.0f, -9.0f,  1.4f, 1.8f, 1.4f, glm::vec3(0.95f,0.9f,0.55f));
+    drawBuildingAt(-10.0f, 8.0f, 2.5f, 3.5f, 2.2f, glm::vec3(0.95f,0.9f,0.55f));
 }
 
 // Draw a road following a polyline of waypoints on the terrain.
@@ -196,12 +219,38 @@ void drawRoads() {
     glEnd();
 
     // Optional: draw center line
+    // center dashed line: draw small quads every N samples
     glColor3f(0.95f, 0.9f, 0.4f);
-    glLineWidth(2.0f);
-    glBegin(GL_LINE_STRIP);
-    for (size_t i = 0; i < samples.size(); ++i) {
-        glVertex3f(samples[i].x, samples[i].y + 0.015f, samples[i].z);
+    const float dashLen = 0.6f;
+    const float dashGap = 0.4f;
+    float acc = 0.0f;
+    for (size_t i = 1; i < samples.size(); ++i) {
+        glm::vec3 a = samples[i-1];
+        glm::vec3 b = samples[i];
+        float seg = glm::length(b - a);
+        glm::vec3 dir = glm::normalize(b - a);
+        float t = 0.0f;
+        while (t < seg) {
+            float avail = seg - t;
+            float take = std::min(dashLen, avail);
+            if (acc <= 0.0001f) {
+                // draw dash from a + dir*(t) to a + dir*(t+take)
+                glm::vec3 p0 = a + dir * t;
+                glm::vec3 p1 = a + dir * (t + take);
+                // small quad perpendicular to dir
+                glm::vec3 perp(-dir.z, 0.0f, dir.x);
+                float half = 0.06f;
+                glBegin(GL_QUADS);
+                glVertex3f(p0.x - perp.x*half, p0.y + 0.02f, p0.z - perp.z*half);
+                glVertex3f(p0.x + perp.x*half, p0.y + 0.02f, p0.z + perp.z*half);
+                glVertex3f(p1.x + perp.x*half, p1.y + 0.02f, p1.z + perp.z*half);
+                glVertex3f(p1.x - perp.x*half, p1.y + 0.02f, p1.z - perp.z*half);
+                glEnd();
+                acc = dashGap;
+            } else {
+                acc -= take;
+            }
+            t += take;
+        }
     }
-    glEnd();
-    glLineWidth(1.0f);
 }
