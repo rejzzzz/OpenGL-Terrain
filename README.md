@@ -16,6 +16,7 @@ This project renders a simple rolling procedural terrain, a movable cube "player
 - Movable object constrained to terrain surface
 - Third‑person orbit camera (RMB drag to orbit, scroll to zoom)
 - Scene abstraction for future expansion
+- A skybox
 
 ## Requirements (Ubuntu / WSL)
 Install toolchain & libraries:

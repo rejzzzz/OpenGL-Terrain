@@ -2,7 +2,7 @@
 
 #include <string>
 #include <vector>
-#include <glm/vec3.hpp> // <-- ADD THIS LINE
+#include <glm/vec3.hpp>
 
 // Forward declaration for the Camera class
 class Camera; 
@@ -19,5 +19,4 @@ void loadSkybox(const std::vector<std::string>& faces);
  * @param camera A const reference to your scene's camera object.
  * @param center The 3D point the camera is looking at (the player).
  */
-// --- THIS LINE IS MODIFIED ---
 void drawSkybox(const Camera& camera, const glm::vec3& center);
