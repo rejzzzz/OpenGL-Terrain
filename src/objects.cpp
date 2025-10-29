@@ -72,11 +72,31 @@ void drawTrees() {
 }
 
 // forward declaration for helper defined later
-static void drawAllBuildings();
+// Building footprint representation for collision checks and drawing
+struct BuildingDef { float x; float z; float bw; float bh; float bd; glm::vec3 windowColor; };
+
+// Static list of buildings used both for drawing and collision detection
+static std::vector<BuildingDef> s_buildings;
+
+static void ensureBuildingsInitialized() {
+    if (!s_buildings.empty()) return;
+    s_buildings.push_back(BuildingDef{-4.0f, -4.0f, 2.0f, 3.0f, 2.0f, glm::vec3(0.95f,0.95f,0.6f)});
+    s_buildings.push_back(BuildingDef{6.0f, 4.0f, 1.8f, 2.5f, 1.8f, glm::vec3(0.9f,0.9f,0.5f)});
+    s_buildings.push_back(BuildingDef{8.5f, 6.5f, 1.6f, 2.0f, 1.6f, glm::vec3(0.95f,0.9f,0.55f)});
+    s_buildings.push_back(BuildingDef{-6.0f, -2.0f, 2.2f, 3.2f, 2.0f, glm::vec3(0.95f,0.9f,0.55f)});
+    s_buildings.push_back(BuildingDef{3.0f, -9.0f, 1.4f, 1.8f, 1.4f, glm::vec3(0.95f,0.9f,0.55f)});
+    s_buildings.push_back(BuildingDef{-10.0f, 8.0f, 2.5f, 3.5f, 2.2f, glm::vec3(0.95f,0.9f,0.55f)});
+}
+
+// forward declare helper used for drawing (defined below)
+static void drawBuildingAt(float wx, float wz, float bw, float bh, float bd, const glm::vec3 &windowColor);
 
 void drawBuildings() {
+    ensureBuildingsInitialized();
     // Draw all buildings using the centralized helper
-    drawAllBuildings();
+    for (const auto &b : s_buildings) {
+        drawBuildingAt(b.x, b.z, b.bw, b.bh, b.bd, b.windowColor);
+    }
 }
 
 // Helper: draw a building at world x,z with width, height, depth and window color
@@ -154,16 +174,17 @@ static void drawBuildingAt(float wx, float wz, float bw, float bh, float bd, con
 
 // Replace previous ad-hoc draws with calls to drawBuildingAt
 // We'll draw the main buildings and extra cluster
-static void drawAllBuildings() {
-    // Main building 1
-    drawBuildingAt(-4.0f, -4.0f, 2.0f, 3.0f, 2.0f, glm::vec3(0.95f,0.95f,0.6f));
-    // Building 2
-    drawBuildingAt(6.0f, 4.0f, 1.8f, 2.5f, 1.8f, glm::vec3(0.9f,0.9f,0.5f));
-    // Extra cluster
-    drawBuildingAt(8.5f,  6.5f, 1.6f, 2.0f, 1.6f, glm::vec3(0.95f,0.9f,0.55f));
-    drawBuildingAt(-6.0f, -2.0f, 2.2f, 3.2f, 2.0f, glm::vec3(0.95f,0.9f,0.55f));
-    drawBuildingAt(3.0f, -9.0f,  1.4f, 1.8f, 1.4f, glm::vec3(0.95f,0.9f,0.55f));
-    drawBuildingAt(-10.0f, 8.0f, 2.5f, 3.5f, 2.2f, glm::vec3(0.95f,0.9f,0.55f));
+// Collision query implementation
+bool isPositionInsideBuilding(float x, float z, float radius) {
+    ensureBuildingsInitialized();
+    for (const auto &b : s_buildings) {
+        float halfW = b.bw * 0.5f;
+        float halfD = b.bd * 0.5f;
+        float dx = std::fabs(x - b.x);
+        float dz = std::fabs(z - b.z);
+        if (dx <= halfW + radius && dz <= halfD + radius) return true;
+    }
+    return false;
 }
 
 // Draw a road following a polyline of waypoints on the terrain.
