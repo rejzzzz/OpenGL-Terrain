@@ -33,7 +33,11 @@ g++ -Iinclude \
     src/scenes/PlayScene.cpp \
     src/terrain.cpp \
     src/objects.cpp \
-    -lGL -lGLU -lGLEW -lglfw -o terrain && echo BUILD_OK || echo BUILD_FAIL"
+    src/utils.cpp \
+    src/objects/MovableObject.cpp \
+    src/camera/Camera.cpp \
+    src/skybox/skybox.cpp \
+    -lGL -lGLU -lGLEW -lglfw -o terrain
 ```
 
 ## Project Structure
