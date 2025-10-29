@@ -51,19 +51,22 @@ void drawCube(float width, float height, float depth) {
 void drawTree(float x, float z) {
     float y = getTerrainHeight(x, z);
     glPushMatrix();
-    glTranslatef(x, y, z);
+    glTranslatef(x, y + 0.05f, z); // slight offset above terrain
 
     // Trunk: small brown cube
-    glColor3f(0.35f, 0.2f, 0.1f); // Brown
-    drawCube(0.3f, 1.0f, 0.3f);
+    glColor3f(0.4f, 0.25f, 0.1f); // rich brown
+    drawCube(0.25f, 0.8f, 0.25f);
 
-    // Foliage: green cube on top (crude, but works)
-    glTranslatef(0.0f, 1.0f, 0.0f); // Move up
-    glColor3f(0.0f, 0.7f, 0.2f);   // Green
-    drawCube(1.2f, 1.2f, 1.2f);
+    // Foliage: vibrant green, lifted above trunk
+    glTranslatef(0.0f, 0.8f, 0.0f); // Move on top of trunk
+
+    // make green bright and less affected by lighting
+    glColor3f(0.1f, 0.9f, 0.1f);          // vivid green
+    drawCube(1.0f, 1.0f, 1.0f);
 
     glPopMatrix();
 }
+
 
 void drawTrees() {
     drawTree(5.0f, 5.0f);

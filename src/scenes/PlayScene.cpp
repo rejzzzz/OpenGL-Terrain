@@ -31,6 +31,9 @@ void PlayScene::OnAttach(GLFWwindow* window) {
     OnFramebufferResize(w,h);
     std::cout << "Controls:\n  WASD move\n  RMB drag orbit\n  Scroll zoom\n  ESC quit\n";
 
+    glEnable(GL_COLOR_MATERIAL);
+    glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
+
     // Add multiple mountains across the terrain for variety
     terrainClearMountains();
     // central ridge
@@ -41,7 +44,7 @@ void PlayScene::OnAttach(GLFWwindow* window) {
     terrainAddMountain(glm::vec2(-14.0f, 10.0f), 6.5f, 3.2f);
     // smaller hill cluster
     terrainAddMountain(glm::vec2(0.0f, -10.0f), 3.5f, 1.8f);
-    terrainAddMountain(glm::vec2(9.0f, 9.0f), 4.0f, 2.5f);
+
 }
 
 void PlayScene::OnFramebufferResize(int width, int height) {
