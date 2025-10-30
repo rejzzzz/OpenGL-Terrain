@@ -4,42 +4,46 @@
 #include <cmath>
 
 // Helper: draw a simple axis-aligned cube centered at origin
-void drawCube(float width, float height, float depth) {
+// If 'shaded' is true, use per-face greys for a subtle shaded look.
+// If false, the cube will inherit the current color set by the caller.
+void drawCube(float width, float height, float depth, bool shaded = false) {
     float w2 = width * 0.5f;
     float h2 = height * 0.5f;
     float d2 = depth * 0.5f;
 
     glBegin(GL_QUADS);
     // Front face
-    glColor3f(0.6f, 0.6f, 0.6f);
+    if (shaded) glColor3f(0.6f, 0.6f, 0.6f);
     glVertex3f(-w2, -h2,  d2);
     glVertex3f( w2, -h2,  d2);
     glVertex3f( w2,  h2,  d2);
     glVertex3f(-w2,  h2,  d2);
     // Back face
+    if (shaded) glColor3f(0.6f, 0.6f, 0.6f);
     glVertex3f(-w2, -h2, -d2);
     glVertex3f(-w2,  h2, -d2);
     glVertex3f( w2,  h2, -d2);
     glVertex3f( w2, -h2, -d2);
     // Top face
-    glColor3f(0.7f, 0.7f, 0.7f);
+    if (shaded) glColor3f(0.7f, 0.7f, 0.7f);
     glVertex3f(-w2,  h2, -d2);
     glVertex3f(-w2,  h2,  d2);
     glVertex3f( w2,  h2,  d2);
     glVertex3f( w2,  h2, -d2);
     // Bottom face
-    glColor3f(0.5f, 0.5f, 0.5f);
+    if (shaded) glColor3f(0.5f, 0.5f, 0.5f);
     glVertex3f(-w2, -h2, -d2);
     glVertex3f( w2, -h2, -d2);
     glVertex3f( w2, -h2,  d2);
     glVertex3f(-w2, -h2,  d2);
     // Right face
-    glColor3f(0.65f, 0.65f, 0.65f);
+    if (shaded) glColor3f(0.65f, 0.65f, 0.65f);
     glVertex3f( w2, -h2, -d2);
     glVertex3f( w2,  h2, -d2);
     glVertex3f( w2,  h2,  d2);
     glVertex3f( w2, -h2,  d2);
     // Left face
+    if (shaded) glColor3f(0.65f, 0.65f, 0.65f);
     glVertex3f(-w2, -h2, -d2);
     glVertex3f(-w2, -h2,  d2);
     glVertex3f(-w2,  h2,  d2);
@@ -55,14 +59,14 @@ void drawTree(float x, float z) {
 
     // Trunk: small brown cube
     glColor3f(0.4f, 0.25f, 0.1f); // rich brown
-    drawCube(0.25f, 0.8f, 0.25f);
+    drawCube(0.25f, 0.8f, 0.25f, false);
 
     // Foliage: vibrant green, lifted above trunk
     glTranslatef(0.0f, 0.8f, 0.0f); // Move on top of trunk
 
     // make green bright and less affected by lighting
     glColor3f(0.1f, 0.9f, 0.1f);          // vivid green
-    drawCube(1.0f, 1.0f, 1.0f);
+    drawCube(1.0f, 1.0f, 1.0f, false);
 
     glPopMatrix();
 }
@@ -110,7 +114,7 @@ static void drawBuildingAt(float wx, float wz, float bw, float bh, float bd, con
 
     // building body
     glColor3f(0.6f, 0.6f, 0.6f);
-    drawCube(bw, bh, bd);
+    drawCube(bw, bh, bd, true);
 
     float halfW = bw * 0.5f;
     float halfH = bh * 0.5f;
