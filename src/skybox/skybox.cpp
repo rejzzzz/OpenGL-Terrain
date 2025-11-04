@@ -12,11 +12,11 @@
 #include <iostream>
 
 // Desired skybox face size (width and height)
-static const int SKYBOX_FACE_SIZE = 256;
+static const int SKYBOX_FACE_SIZE = 512;
 
 // Simple nearest-neighbour resize from (sw x sh) to (tw x th)
 static std::vector<unsigned char> resizeNearest(const unsigned char* src, int sw, int sh, int channels, int tw, int th) {
-    std::vector<unsigned char> dst((size_t)tw * tw * channels);
+    std::vector<unsigned char> dst((size_t)tw * th * channels);
     dst.assign((size_t)tw * th * channels, 0);
     for (int y = 0; y < th; ++y) {
         int sy = (y * sh) / th;

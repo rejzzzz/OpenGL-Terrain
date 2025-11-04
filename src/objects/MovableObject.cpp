@@ -16,8 +16,13 @@ void MovableObject::MoveForward(float amount) {
     glm::vec3 proposed = position + forward * amount;
     // Keep movement confined to XZ; radius of player for collision
     const float radius = 0.5f; // matches visual size (half-box + margin)
-    // Terrain bounds (match drawTerrain grid: SIZE=64, SPACING=0.5 -> x in [-16, 15.5])
-    const float minX = -16.0f, maxX = 15.5f, minZ = -16.0f, maxZ = 15.5f;
+    // Terrain bounds (match drawTerrain grid: SIZE=256, SPACING=0.5)
+    const int TERRAIN_SIZE = 512;
+    const float SPACING = 0.5f;
+    const float minX = -((TERRAIN_SIZE/2) * SPACING);
+    const float minZ = -((TERRAIN_SIZE/2) * SPACING);
+    const float maxX = ((TERRAIN_SIZE/2) - 1) * SPACING;
+    const float maxZ = ((TERRAIN_SIZE/2) - 1) * SPACING;
     // Clamp to terrain bounds
     proposed.x = std::max(minX, std::min(maxX, proposed.x));
     proposed.z = std::max(minZ, std::min(maxZ, proposed.z));
@@ -31,7 +36,12 @@ void MovableObject::MoveForward(float amount) {
 void MovableObject::MoveRight(float amount) {
     glm::vec3 proposed = position + right * amount;
     const float radius = 0.5f;
-    const float minX = -16.0f, maxX = 15.5f, minZ = -16.0f, maxZ = 15.5f;
+    const int TERRAIN_SIZE = 512;
+    const float SPACING = 0.5f;
+    const float minX = -((TERRAIN_SIZE/2) * SPACING);
+    const float minZ = -((TERRAIN_SIZE/2) * SPACING);
+    const float maxX = ((TERRAIN_SIZE/2) - 1) * SPACING;
+    const float maxZ = ((TERRAIN_SIZE/2) - 1) * SPACING;
     proposed.x = std::max(minX, std::min(maxX, proposed.x));
     proposed.z = std::max(minZ, std::min(maxZ, proposed.z));
     if (!isPositionInsideBuilding(proposed.x, proposed.z, radius)) {
@@ -46,7 +56,12 @@ void MovableObject::MoveInDirection(const glm::vec3& direction, float amount) {
     glm::vec3 moveDir = glm::vec3(normalizedDir.x, 0.0f, normalizedDir.z);
     glm::vec3 proposed = position + moveDir * amount;
     const float radius = 0.5f;
-    const float minX = -16.0f, maxX = 15.5f, minZ = -16.0f, maxZ = 15.5f;
+    const int TERRAIN_SIZE = 512;
+    const float SPACING = 0.5f;
+    const float minX = -((TERRAIN_SIZE/2) * SPACING);
+    const float minZ = -((TERRAIN_SIZE/2) * SPACING);
+    const float maxX = ((TERRAIN_SIZE/2) - 1) * SPACING;
+    const float maxZ = ((TERRAIN_SIZE/2) - 1) * SPACING;
     proposed.x = std::max(minX, std::min(maxX, proposed.x));
     proposed.z = std::max(minZ, std::min(maxZ, proposed.z));
     if (!isPositionInsideBuilding(proposed.x, proposed.z, radius)) {
