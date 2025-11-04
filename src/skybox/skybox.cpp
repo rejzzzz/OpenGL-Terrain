@@ -11,6 +11,27 @@
 #include <cstdio>
 #include <iostream>
 
+// Desired skybox face size (width and height)
+static const int SKYBOX_FACE_SIZE = 256;
+
+// Simple nearest-neighbour resize from (sw x sh) to (tw x th)
+static std::vector<unsigned char> resizeNearest(const unsigned char* src, int sw, int sh, int channels, int tw, int th) {
+    std::vector<unsigned char> dst((size_t)tw * tw * channels);
+    dst.assign((size_t)tw * th * channels, 0);
+    for (int y = 0; y < th; ++y) {
+        int sy = (y * sh) / th;
+        if (sy >= sh) sy = sh - 1;
+        for (int x = 0; x < tw; ++x) {
+            int sx = (x * sw) / tw;
+            if (sx >= sw) sx = sw - 1;
+            size_t sidx = ((size_t)sy * sw + sx) * channels;
+            size_t didx = ((size_t)y * tw + x) * channels;
+            for (int c = 0; c < channels; ++c) dst[didx + c] = src[sidx + c];
+        }
+    }
+    return dst;
+}
+
 // Static texture ID for the skybox cube map
 static GLuint skyboxTextureID;
 
@@ -37,7 +58,15 @@ void loadSkybox(const std::vector<std::string>& faces) {
 
             GLenum format = (nrChannels == 4) ? GL_RGBA : GL_RGB;
 
-            glTexImage2D(targets[i], 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+            // If the image isn't the desired SKYBOX_FACE_SIZE, resample it.
+            if (width != SKYBOX_FACE_SIZE || height != SKYBOX_FACE_SIZE) {
+                auto resized = resizeNearest(data, width, height, nrChannels, SKYBOX_FACE_SIZE, SKYBOX_FACE_SIZE);
+                printf("Resampled %s -> %dx%d\n", faces[i].c_str(), SKYBOX_FACE_SIZE, SKYBOX_FACE_SIZE);
+                glTexImage2D(targets[i], 0, format, SKYBOX_FACE_SIZE, SKYBOX_FACE_SIZE, 0, format, GL_UNSIGNED_BYTE, resized.data());
+            } else {
+                glTexImage2D(targets[i], 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+            }
+
             stbi_image_free(data);
         } else {
             printf("❌ Failed to load skybox texture: %s\n", faces[i].c_str());
