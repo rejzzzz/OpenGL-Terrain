@@ -3,6 +3,8 @@
 #include <vector>
 #include <algorithm>
 #include <glm/glm.hpp>
+// Allow terrain to consult pond definitions so we can carve basins
+#include "../include/objects.h"
 #include "terrain.h"
 
 // Internal mountain data
@@ -22,8 +24,8 @@ void terrainClearMountains() {
     s_mountains.clear();
 }
 
-// Base rolling hills + optional mountain domes
-float getTerrainHeight(float x, float z) {
+// Base rolling hills + optional mountain domes (no pond deformation)
+float getTerrainBaseHeight(float x, float z) {
     // Base gentle hills
     float y = 0.5f * std::sin(x * 0.2f) * std::cos(z * 0.2f);
 
@@ -35,6 +37,30 @@ float getTerrainHeight(float x, float z) {
         if (dist < m.radius) {
             float t = 1.0f - (dist / m.radius); // 1 at center -> 0 at edge
             y += m.height * (t * t);            // quadratic falloff
+        }
+    }
+    return y;
+}
+
+// Final terrain height including pond basins carved out of the base terrain
+float getTerrainHeight(float x, float z) {
+    float y = getTerrainBaseHeight(x, z);
+    // Carve pond basins so water sits in a depression instead of following slopes
+    const auto &ponds = getPonds();
+    for (const auto &pp : ponds) {
+        const glm::vec2 &c = pp.first;
+        float r = pp.second;
+        float dx = x - c.x;
+        float dz = z - c.y;
+        float dist = std::sqrt(dx*dx + dz*dz);
+        if (dist < r) {
+            // compute a center base height and a max depth proportional to radius
+            float centerBase = getTerrainBaseHeight(c.x, c.y);
+            float maxDepth = std::min(3.0f, r * 0.35f);
+            float falloff = 1.0f - (dist / r);
+            float depress = maxDepth * (falloff * falloff);
+            float depressedY = centerBase - depress;
+            if (y > depressedY) y = depressedY;
         }
     }
     return y;
@@ -57,7 +83,7 @@ static float getMountainContribution(float x, float z) {
 
 void drawTerrain() {
     // Grid size (SIZE x SIZE) and spacing between vertices
-    const int SIZE = 512;        // Grid size (512x512) — increased for larger world/villages
+    const int SIZE = 200;        // Grid size (200x200)
     const float SPACING = 0.5f;  // Distance between vertices
 
     glShadeModel(GL_SMOOTH);

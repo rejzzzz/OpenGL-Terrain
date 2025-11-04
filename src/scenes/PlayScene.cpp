@@ -6,6 +6,7 @@
 #include <vector>
 #include <string>
 #include "skybox/skybox.h"
+#include "../../include/city/City.h"
 
 PlayScene::PlayScene()
     : m_Player(0.0f,0.0f,0.0f), m_Camera(&m_Player) {
@@ -35,15 +36,41 @@ void PlayScene::OnAttach(GLFWwindow* window) {
     glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
 
     // Add multiple mountains across the terrain for variety
+    // Keep the mountain list empty here; border mountains are added below to frame the scene
     terrainClearMountains();
-    // central ridge
-    terrainAddMountain(glm::vec2(5.0f, 5.0f), 6.0f, 3.5f);
-    terrainAddMountain(glm::vec2(-8.0f, 3.0f), 4.5f, 2.2f);
-    // distant peaks
-    terrainAddMountain(glm::vec2(12.0f, -4.0f), 7.0f, 4.0f);
-    terrainAddMountain(glm::vec2(-14.0f, 10.0f), 6.5f, 3.2f);
-    // smaller hill cluster
-    terrainAddMountain(glm::vec2(0.0f, -10.0f), 3.5f, 1.8f);
+
+    // --- Border mountains recalculated to match the current terrain extents ---
+    const int TERRAIN_SIZE = 200; // must match terrain.cpp
+    const float SPACING = 0.5f;
+    const float halfWorld = (TERRAIN_SIZE / 2) * SPACING; // e.g. 100 * 0.5 = 50.0
+    const float minEdge = -halfWorld;
+    const float maxEdge = (TERRAIN_SIZE/2 - 1) * SPACING;
+    // place mountains just inside the perimeter with some spread
+    // left column (x ~ minEdge + 3)
+    terrainAddMountain(glm::vec2(minEdge + 3.0f, -halfWorld * 0.6f), 12.0f, 4.2f);
+    terrainAddMountain(glm::vec2(minEdge + 3.0f, 0.0f), 14.0f, 5.0f);
+    terrainAddMountain(glm::vec2(minEdge + 3.0f, halfWorld * 0.6f), 12.0f, 4.0f);
+    // top row (z ~ minEdge + 3)
+    terrainAddMountain(glm::vec2(-halfWorld * 0.6f, minEdge + 3.0f), 10.0f, 3.6f);
+    terrainAddMountain(glm::vec2(0.0f, minEdge + 3.0f), 16.0f, 5.2f);
+    terrainAddMountain(glm::vec2(halfWorld * 0.6f, minEdge + 3.0f), 10.0f, 3.6f);
+    // right column (x ~ maxEdge - 3)
+    terrainAddMountain(glm::vec2(maxEdge - 3.0f, -halfWorld * 0.6f), 12.0f, 4.0f);
+    terrainAddMountain(glm::vec2(maxEdge - 3.0f, 0.0f), 14.0f, 4.8f);
+    terrainAddMountain(glm::vec2(maxEdge - 3.0f, halfWorld * 0.6f), 12.0f, 4.0f);
+    // bottom row (z ~ maxEdge - 3)
+    terrainAddMountain(glm::vec2(halfWorld * 0.6f, maxEdge - 3.0f), 10.0f, 3.4f);
+    terrainAddMountain(glm::vec2(0.0f, maxEdge - 3.0f), 16.0f, 5.0f);
+    terrainAddMountain(glm::vec2(-halfWorld * 0.6f, maxEdge - 3.0f), 10.0f, 3.4f);
+
+    // Generate a simple city with ~30 houses around the origin
+    // Place the lake between two chosen border mountains for a scenic look
+    glm::vec2 mountainA(minEdge + 3.0f, 0.0f); // left-column middle mountain
+    glm::vec2 mountainB(-halfWorld * 0.6f, minEdge + 3.0f); // top-row left mountain
+    glm::vec2 lakeCenter = (mountainA + mountainB) * 0.5f;
+    generateCity(30, 40.0f, lakeCenter);
+    // spawn collectible coins around the city
+    spawnCoins(50, 40.0f);
 
 }
 
@@ -60,18 +87,15 @@ void PlayScene::OnFramebufferResize(int width, int height) {
 void PlayScene::OnKey(int key, int scancode, int action, int mods) {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
         glfwSetWindowShouldClose(m_Window,true);
-
-    const float moveSpeed = 0.15f;
-    if (action == GLFW_PRESS || action == GLFW_REPEAT) {
-        glm::vec3 f = m_Camera.GetForward(); f.y = 0; float fl2=glm::dot(f,f); if(fl2>0.0001f) f=glm::normalize(f);
-        glm::vec3 r = m_Camera.GetRight();   r.y = 0; float rl2=glm::dot(r,r); if(rl2>0.0001f) r=glm::normalize(r);
-        switch (key) {
-            case GLFW_KEY_W: m_Player.MoveInDirection(f,  moveSpeed); break;
-            case GLFW_KEY_S: m_Player.MoveInDirection(-f, moveSpeed); break;
-            case GLFW_KEY_A: m_Player.MoveInDirection(-r, moveSpeed); break;
-            case GLFW_KEY_D: m_Player.MoveInDirection(r,  moveSpeed); break;
-            default: break;
-        }
+    // Update movement input flags on press/release
+    if (key == GLFW_KEY_W) {
+        m_MoveForward = (action != GLFW_RELEASE);
+    } else if (key == GLFW_KEY_S) {
+        m_MoveBack = (action != GLFW_RELEASE);
+    } else if (key == GLFW_KEY_A) {
+        m_MoveLeft = (action != GLFW_RELEASE);
+    } else if (key == GLFW_KEY_D) {
+        m_MoveRight = (action != GLFW_RELEASE);
     }
 }
 
@@ -99,6 +123,29 @@ void PlayScene::OnUpdate(float dt) {
     m_Camera.Update();
     // Face player toward camera forward projection
     glm::vec3 f = m_Camera.GetForward(); f.y=0; float fl2=glm::dot(f,f); if(fl2>0.0001f){ f=glm::normalize(f); float yawDeg = glm::degrees(std::atan2(f.x, -f.z)); m_Player.SetYaw(yawDeg);}    
+    // Build desired movement from input flags for smooth walking
+    glm::vec3 forward = m_Camera.GetForward(); forward.y = 0; if (glm::length(forward) > 0.0001f) forward = glm::normalize(forward);
+    glm::vec3 right = m_Camera.GetRight(); right.y = 0; if (glm::length(right) > 0.0001f) right = glm::normalize(right);
+    glm::vec3 desiredDir(0.0f);
+    if (m_MoveForward) desiredDir += forward;
+    if (m_MoveBack) desiredDir -= forward;
+    if (m_MoveLeft) desiredDir -= right;
+    if (m_MoveRight) desiredDir += right;
+    float speed = 3.2f; // world units per second
+    if (glm::length(desiredDir) > 0.0001f) {
+        desiredDir = glm::normalize(desiredDir);
+        m_Player.SetDesiredMovement(desiredDir, speed);
+    } else {
+        m_Player.SetDesiredMovement(glm::vec3(0.0f), 0.0f);
+    }
+
+    // Update player physics / animation with dt
+    m_Player.Update(dt);
+
+    // Check coin pickups at player position
+    glm::vec3 pp = m_Player.GetPosition();
+    int got = collectCoinsAt(pp.x, pp.z, 0.9f);
+    (void)got;
 }
 
 void PlayScene::OnRender() {
@@ -122,10 +169,88 @@ void PlayScene::OnRender() {
     gluLookAt(eye.x, eye.y, eye.z, center.x, center.y, center.z, up.x, up.y, up.z);
 
     drawTerrain();
-    // draw road on top of terrain and beneath buildings
+    // draw water bodies first (recessed), then roads, buildings, trees and street lights
+    drawPonds();
     drawRoads();
     drawBuildings();
     drawTrees();
+    drawStreetLights();
+    drawCoins();
     m_Player.Draw();
+
+    // Draw HUD: numeric coin counter (top-left) using a simple 7-segment style
+    int w,h; glfwGetFramebufferSize(m_Window, &w, &h);
+    int collected = getCollectedCoinsCount();
+    int total = getTotalCoinsCount();
+    // prepare orthographic 2D
+    glMatrixMode(GL_PROJECTION);
+    glPushMatrix(); glLoadIdentity(); glOrtho(0, w, h, 0, -1, 1);
+    glMatrixMode(GL_MODELVIEW); glPushMatrix(); glLoadIdentity();
+
+    // draw a small coin icon at left
+    auto drawIcon = [&](int x, int y, int size){
+        glColor3f(0.95f, 0.8f, 0.1f);
+        glBegin(GL_QUADS);
+        glVertex2i(x, y);
+        glVertex2i(x+size, y);
+        glVertex2i(x+size, y+size);
+        glVertex2i(x, y+size);
+        glEnd();
+    };
+
+    // 7-seg digit drawer (simple segments as rectangles)
+    auto drawDigit = [&](int px, int py, int wseg, int hseg, int digit){
+        // segment layout (a,b,c,d,e,f,g)
+        bool seg[7]={0};
+        switch(digit){
+            case 0: seg[0]=seg[1]=seg[2]=seg[3]=seg[4]=seg[5]=true; break;
+            case 1: seg[1]=seg[2]=true; break;
+            case 2: seg[0]=seg[1]=seg[6]=seg[4]=seg[3]=true; break;
+            case 3: seg[0]=seg[1]=seg[6]=seg[2]=seg[3]=true; break;
+            case 4: seg[5]=seg[6]=seg[1]=seg[2]=true; break;
+            case 5: seg[0]=seg[5]=seg[6]=seg[2]=seg[3]=true; break;
+            case 6: seg[0]=seg[5]=seg[4]=seg[3]=seg[2]=seg[6]=true; break;
+            case 7: seg[0]=seg[1]=seg[2]=true; break;
+            case 8: for(int i=0;i<7;++i) seg[i]=true; break;
+            case 9: seg[0]=seg[1]=seg[2]=seg[3]=seg[5]=seg[6]=true; break;
+            default: break;
+        }
+        int sw = wseg, sh = hseg;
+        // a (top)
+        if(seg[0]){ glBegin(GL_QUADS); glVertex2i(px+sw, py); glVertex2i(px+sw+sh, py); glVertex2i(px+sw+sh, py+sw); glVertex2i(px+sw, py+sw); glEnd(); }
+        // b (top-right)
+        if(seg[1]){ glBegin(GL_QUADS); glVertex2i(px+sw+sh, py); glVertex2i(px+sw+sh+sw, py+sw); glVertex2i(px+sw+sh+sw, py+sw+sw); glVertex2i(px+sw+sh, py+sw); glEnd(); }
+        // c (bottom-right)
+        if(seg[2]){ glBegin(GL_QUADS); glVertex2i(px+sw+sh, py+sw+sw); glVertex2i(px+sw+sh+sw, py+sw+sw); glVertex2i(px+sw+sh+sw, py+sw+sw+sw); glVertex2i(px+sw+sh, py+sw+sw+sw); glEnd(); }
+        // d (bottom)
+        if(seg[3]){ glBegin(GL_QUADS); glVertex2i(px+sw, py+sw+sw+sw); glVertex2i(px+sw+sh, py+sw+sw+sw); glVertex2i(px+sw+sh, py+sw+sw+sw+sw); glVertex2i(px+sw, py+sw+sw+sw+sw); glEnd(); }
+        // e (bottom-left)
+        if(seg[4]){ glBegin(GL_QUADS); glVertex2i(px, py+sw+sw); glVertex2i(px+sw, py+sw+sw); glVertex2i(px+sw, py+sw+sw+sw); glVertex2i(px, py+sw+sw+sw); glEnd(); }
+        // f (top-left)
+        if(seg[5]){ glBegin(GL_QUADS); glVertex2i(px, py); glVertex2i(px+sw, py); glVertex2i(px+sw, py+sw); glVertex2i(px, py+sw); glEnd(); }
+        // g (middle)
+        if(seg[6]){ glBegin(GL_QUADS); glVertex2i(px+sw, py+sw); glVertex2i(px+sw+sh, py+sw); glVertex2i(px+sw+sh, py+sw+sw); glVertex2i(px+sw, py+sw+sw); glEnd(); }
+    };
+
+    // draw icon and numeric counter
+    int iconX = 12, iconY = 12, iconSize = 20;
+    drawIcon(iconX, iconY, iconSize);
+    // numeric: collected / total
+    std::string left = std::to_string(collected);
+    std::string right = std::to_string(total);
+    int dx = iconX + iconSize + 8;
+    int segW = 3, segH = 10;
+    glColor3f(1.0f,1.0f,1.0f);
+    // draw each digit of collected
+    for (size_t i=0;i<left.size();++i){ int d = left[i]-'0'; drawDigit(dx + i*(segH+segW+4), iconY, segW, segH, d); }
+    // draw slash as small quad
+    int slashX = dx + (int)left.size()*(segH+segW+4) + 6;
+    glBegin(GL_LINES); glVertex2i(slashX, iconY+6); glVertex2i(slashX+10, iconY+iconSize-6); glEnd();
+    // draw total
+    int baseX = slashX + 16;
+    for (size_t i=0;i<right.size();++i){ int d = right[i]-'0'; drawDigit(baseX + i*(segH+segW+4), iconY, segW, segH, d); }
+
+    // restore matrices
+    glPopMatrix(); glMatrixMode(GL_PROJECTION); glPopMatrix(); glMatrixMode(GL_MODELVIEW);
 }
 // (Removed stray example code; buildings are drawn via drawBuildings())

@@ -11,12 +11,17 @@ public:
     // Move object on the XZ plane, Y coord will be set based on terrain height
     void MoveForward(float amount);
     void MoveRight(float amount);
-    
+
     // Move in a specified direction (normalized vector), amount is distance
     void MoveInDirection(const glm::vec3& direction, float amount);
+
+    // New movement API: set desired movement each frame (direction on XZ plane, speed in world units/sec)
+    void SetDesiredMovement(const glm::vec3 &dir, float speed);
+    // Update physics / smoothing / animations (call each frame with dt seconds)
+    void Update(float dt);
     
     // Draw the object
-    void Draw() const;
+    void Draw();
     
     // Get current position for camera tracking
     const glm::vec3& GetPosition() const { return position; }
@@ -39,4 +44,12 @@ private:
     
     void updateVectors();
     void stayOnTerrain();
+
+    // Movement smoothing
+    glm::vec3 velocity = glm::vec3(0.0f);
+    glm::vec3 desiredVelocity = glm::vec3(0.0f);
+
+    // Animation state
+    float animPhase = 0.0f; // advances when moving
+    float animSpeed = 6.0f;
 };

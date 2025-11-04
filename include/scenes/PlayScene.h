@@ -26,4 +26,9 @@ private:
     bool m_FirstMouse = true;
     double m_LastX = 0.0;
     double m_LastY = 0.0;
+    // movement input state for smooth walking
+    bool m_MoveForward = false;
+    bool m_MoveBack = false;
+    bool m_MoveLeft = false;
+    bool m_MoveRight = false;
 };
