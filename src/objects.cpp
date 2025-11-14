@@ -164,7 +164,8 @@ void drawPonds() {
         glDisable(GL_BLEND);
 
         // small shore ring (annulus) - draw slightly above water to show rim
-        glColor3f(0.12f, 0.30f, 0.12f);
+        // use a muddy/brown shore color instead of bright green so it doesn't conflict with roads
+        glColor3f(0.28f, 0.20f, 0.12f);
         drawDiskAnnulus(c.x, c.y, r, r + 0.08f, 48);
     }
 }
@@ -319,26 +320,74 @@ void drawCoins() {
 #else
     t = glfwGetTime();
 #endif
+    // helper: draw a thin vertical coin (circular faces in Y-Z plane, thickness along X)
+    auto drawVerticalCoin = [](float radius, float halfThickness, int segments = 32) {
+        // front face (x = +halfThickness)
+        glBegin(GL_TRIANGLE_FAN);
+        glVertex3f(halfThickness, 0.0f, 0.0f);
+        for (int i = 0; i <= segments; ++i) {
+            float a = (float)i / (float)segments * 2.0f * 3.14159265f;
+            float y = std::cos(a) * radius;
+            float z = std::sin(a) * radius;
+            glVertex3f(halfThickness, y, z);
+        }
+        glEnd();
+
+        // back face (x = -halfThickness)
+        glBegin(GL_TRIANGLE_FAN);
+        glVertex3f(-halfThickness, 0.0f, 0.0f);
+        for (int i = 0; i <= segments; ++i) {
+            float a = (float)i / (float)segments * -2.0f * 3.14159265f; // reversed winding
+            float y = std::cos(a) * radius;
+            float z = std::sin(a) * radius;
+            glVertex3f(-halfThickness, y, z);
+        }
+        glEnd();
+
+        // side (connect faces)
+        glBegin(GL_TRIANGLE_STRIP);
+        for (int i = 0; i <= segments; ++i) {
+            float a = (float)i / (float)segments * 2.0f * 3.14159265f;
+            float y = std::cos(a) * radius;
+            float z = std::sin(a) * radius;
+            glVertex3f(-halfThickness, y, z);
+            glVertex3f( halfThickness, y, z);
+        }
+        glEnd();
+    };
+
     int idx = 0;
     for (const auto &c : s_coins) {
         ++idx;
         if (c.collected) continue;
         float baseY = getTerrainHeight(c.p.x, c.p.y);
-        float bob = 0.10f * std::sin((float)t * 3.0f + idx * 0.47f);
-        float y = baseY + 0.18f + bob; // lift coins a bit higher for visibility
+        // bobbing amplitude scaled to coin size
+        float coinRadius = 0.42f;
+        float bob = 0.12f * std::sin((float)t * 3.0f + idx * 0.47f);
+        // position coin so it stands on the terrain (bottom touches terrain)
+        float y = baseY + coinRadius + bob;
         float spin = (float)t * 60.0f + idx * 11.0f; // degrees
         glPushMatrix();
         glTranslatef(c.p.x, y, c.p.y);
+        // spin around vertical axis
         glRotatef(spin, 0.0f, 1.0f, 0.0f);
-        // larger, slightly thicker coin
-        glScalef(0.28f, 0.04f, 0.28f);
-        drawCube(1.0f, 1.0f, 1.0f, false);
-        // small shiny highlight on top
+        // coin faces are in Y-Z plane (vertical), thickness along X
+        glColor3f(0.95f, 0.8f, 0.1f);
+        drawVerticalCoin(coinRadius, 0.04f, 48);
+        // small highlight: a slightly smaller lighter disc on the front face
         glPushMatrix();
-        glTranslatef(0.0f, 0.6f, 0.0f);
-        glScalef(0.6f, 0.02f, 0.6f);
+        glTranslatef(0.045f, 0.0f, 0.0f); // place on front face
         glColor3f(1.0f, 0.95f, 0.6f);
-        drawCube(1.0f, 1.0f, 1.0f, false);
+        // draw a slightly smaller circular patch
+        glBegin(GL_TRIANGLE_FAN);
+        glVertex3f(0.0f, 0.0f, 0.0f);
+        for (int i = 0; i <= 48; ++i) {
+            float a = (float)i / 48.0f * 2.0f * 3.14159265f;
+            float yv = std::cos(a) * (coinRadius * 0.6f);
+            float zv = std::sin(a) * (coinRadius * 0.6f);
+            glVertex3f(0.0f, yv, zv);
+        }
+        glEnd();
         glPopMatrix();
         glPopMatrix();
         // restore coin color for next coin
@@ -425,8 +474,8 @@ void drawRoads() {
         }
         if (uniq.size() < 2) continue;
 
-        // road surface (use deduped samples)
-        glColor3f(0.12f,0.12f,0.12f);
+        // road surface (use deduped samples) - asphalt color
+        glColor3f(0.20f,0.205f,0.22f);
         glBegin(GL_TRIANGLE_STRIP);
         for (size_t i = 0; i < uniq.size(); ++i) {
             glm::vec3 prev = (i==0) ? uniq[i] : uniq[i-1];
@@ -450,8 +499,8 @@ void drawRoads() {
         }
         glEnd();
 
-        // sidewalks
-        glColor3f(0.78f,0.78f,0.78f);
+        // sidewalks (concrete)
+        glColor3f(0.76f,0.76f,0.74f);
         glBegin(GL_TRIANGLE_STRIP);
         for (size_t i=0;i<uniq.size();++i){
             glm::vec3 prev = (i==0) ? uniq[i] : uniq[i-1];
@@ -526,9 +575,9 @@ void drawRoads() {
         }
 
     // Draw curb/edge lines for a cleaner look
-        glLineWidth(2.0f);
-        // left curb
-        glColor3f(0.05f,0.05f,0.05f);
+    glLineWidth(2.0f);
+    // left curb (light concrete contrast)
+    glColor3f(0.9f,0.9f,0.9f);
         glBegin(GL_LINE_STRIP);
         for (size_t i=0;i<uniq.size();++i){
             glm::vec3 prev = (i==0) ? uniq[i] : uniq[i-1];
@@ -567,10 +616,11 @@ void drawRoads() {
             // Before placing trees, draw an intersection cap at each original waypoint so roads connect cleanly
             for (const auto &wp : road.pts) {
                 float capR = road.halfWidth + sidewalkWidth + 0.02f;
-                glColor3f(0.12f, 0.12f, 0.12f);
+                // intersection cap matches asphalt
+                glColor3f(0.20f, 0.205f, 0.22f);
                 drawFilledDisk(wp.x, wp.y, capR, 24);
-                // also draw a slightly lighter sidewalk skirt
-                glColor3f(0.78f, 0.78f, 0.78f);
+                // slightly lighter concrete skirt
+                glColor3f(0.76f, 0.76f, 0.74f);
                 drawFilledDisk(wp.x, wp.y, capR + 0.02f, 20);
             }
 
@@ -595,7 +645,10 @@ void drawRoads() {
                         for (const auto &other : s_roads) {
                             for (size_t si = 1; si < other.pts.size(); ++si) {
                                 float d = pointSegDist2D(t2, other.pts[si-1], other.pts[si]);
-                                if (d <= (other.halfWidth + sidewalkWidth + 0.15f)) { tooClose = true; break; }
+                                // strict check: tree center must be outside the road surface.
+                                // consider the road half-width plus a small safety margin (no sidewalk included)
+                                const float safetyMargin = 0.05f;
+                                if (d <= (other.halfWidth + safetyMargin)) { tooClose = true; break; }
                             }
                             if (tooClose) break;
                         }

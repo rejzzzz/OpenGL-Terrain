@@ -130,20 +130,25 @@ void MovableObject::Draw() {
     const float armHalfW = 0.10f, armHalfD = 0.10f, armHeight = 0.6f;
     const float headHalf = 0.18f;
 
-    // Legs (two) with simple walking swing based on animPhase
+
+    // Legs (two) with hip pivot so swing looks natural
     float speedFactor = glm::length(glm::vec2(velocity.x, velocity.z));
     float swing = std::sin(animPhase) * 30.0f * speedFactor; // degrees
     glColor3f(0.15f, 0.15f, 0.45f); // pants: dark bluish
+    // compute hip (top of leg) Y
+    float hipY = footBaseY + legHeight;
     // left leg (swing opposite)
     glPushMatrix();
-    glTranslatef(-0.18f, footBaseY + legHeight*0.5f, 0.0f);
-    glRotatef(-swing, 1.0f, 0.0f, 0.0f);
+    glTranslatef(-0.18f, hipY, 0.0f);        // move to hip pivot
+    glRotatef(-swing, 1.0f, 0.0f, 0.0f);     // rotate around hip
+    glTranslatef(0.0f, -legHeight*0.5f, 0.0f); // move down to center of leg box
     drawBox(legHalfW, legHeight*0.5f, legHalfD);
     glPopMatrix();
     // right leg
     glPushMatrix();
-    glTranslatef(0.18f, footBaseY + legHeight*0.5f, 0.0f);
+    glTranslatef(0.18f, hipY, 0.0f);
     glRotatef(swing, 1.0f, 0.0f, 0.0f);
+    glTranslatef(0.0f, -legHeight*0.5f, 0.0f);
     drawBox(legHalfW, legHeight*0.5f, legHalfD);
     glPopMatrix();
 
@@ -155,19 +160,22 @@ void MovableObject::Draw() {
     drawBox(torsoHalfW, torsoHeight*0.5f, torsoHalfD);
     glPopMatrix();
 
-    // Arms - swing opposite to legs
+    // Arms - pivot at shoulders (top of torso) and swing opposite to legs
     float armSwing = std::sin(animPhase) * 25.0f * speedFactor;
     glColor3f(0.9f, 0.8f, 0.6f); // skin tone
+    float shoulderY = torsoY + torsoHeight*0.5f - 0.05f; // slight inset from top
     // left arm
     glPushMatrix();
-    glTranslatef(-torsoHalfW - armHalfW - 0.02f, torsoY, 0.0f);
+    glTranslatef(-torsoHalfW - armHalfW - 0.02f, shoulderY, 0.0f); // shoulder pivot
     glRotatef(armSwing, 1.0f, 0.0f, 0.0f);
+    glTranslatef(0.0f, -armHeight*0.5f, 0.0f);
     drawBox(armHalfW, armHeight*0.5f, armHalfD);
     glPopMatrix();
     // right arm
     glPushMatrix();
-    glTranslatef(torsoHalfW + armHalfW + 0.02f, torsoY, 0.0f);
+    glTranslatef(torsoHalfW + armHalfW + 0.02f, shoulderY, 0.0f);
     glRotatef(-armSwing, 1.0f, 0.0f, 0.0f);
+    glTranslatef(0.0f, -armHeight*0.5f, 0.0f);
     drawBox(armHalfW, armHeight*0.5f, armHalfD);
     glPopMatrix();
 
@@ -218,6 +226,29 @@ void MovableObject::Update(float dt) {
     // advance animation phase depending on speed
     float sp = glm::length(glm::vec2(velocity.x, velocity.z));
     animPhase += dt * animSpeed * (0.5f + sp * 2.0f);
+
+    // Smoothly rotate toward targetYaw using max turn rate (shortest angular path)
+    auto shortestAngle = [](float a){
+        while (a > 180.0f) a -= 360.0f;
+        while (a < -180.0f) a += 360.0f;
+        return a;
+    };
+    float delta = shortestAngle(targetYaw - yaw);
+    float maxTurn = yawTurnSpeed * dt; // degrees allowed this frame
+    if (std::fabs(delta) <= maxTurn) {
+        yaw = targetYaw;
+    } else {
+        yaw += (delta > 0.0f ? 1.0f : -1.0f) * maxTurn;
+    }
+    // normalize yaw into manageable range
+    if (yaw > 360.0f || yaw < -360.0f) yaw = std::fmod(yaw, 360.0f);
+    updateVectors();
+}
+
+void MovableObject::SetTargetYaw(float y) {
+    // normalize input yaw to -360..360 range
+    if (y > 360.0f || y < -360.0f) y = std::fmod(y, 360.0f);
+    targetYaw = y;
 }
 
 void MovableObject::updateVectors() {

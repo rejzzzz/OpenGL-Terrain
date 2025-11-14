@@ -121,8 +121,6 @@ void PlayScene::OnScroll(double xoff, double yoff) {
 
 void PlayScene::OnUpdate(float dt) {
     m_Camera.Update();
-    // Face player toward camera forward projection
-    glm::vec3 f = m_Camera.GetForward(); f.y=0; float fl2=glm::dot(f,f); if(fl2>0.0001f){ f=glm::normalize(f); float yawDeg = glm::degrees(std::atan2(f.x, -f.z)); m_Player.SetYaw(yawDeg);}    
     // Build desired movement from input flags for smooth walking
     glm::vec3 forward = m_Camera.GetForward(); forward.y = 0; if (glm::length(forward) > 0.0001f) forward = glm::normalize(forward);
     glm::vec3 right = m_Camera.GetRight(); right.y = 0; if (glm::length(right) > 0.0001f) right = glm::normalize(right);
@@ -137,6 +135,22 @@ void PlayScene::OnUpdate(float dt) {
         m_Player.SetDesiredMovement(desiredDir, speed);
     } else {
         m_Player.SetDesiredMovement(glm::vec3(0.0f), 0.0f);
+    }
+
+    // Face player toward camera forward when the user is dragging the camera (RMB),
+    // otherwise face movement direction if moving.
+    if (m_RMouseDown) {
+        // instant facing: set player yaw immediately to camera forward
+        glm::vec3 cf = m_Camera.GetForward(); cf.y = 0.0f;
+        if (glm::dot(cf, cf) > 0.0001f) {
+            cf = glm::normalize(cf);
+            float yawDeg = glm::degrees(std::atan2(cf.x, -cf.z));
+            m_Player.SetYaw(yawDeg);
+        }
+    } else if (glm::length(desiredDir) > 0.0001f) {
+        glm::vec3 md = desiredDir; md.y = 0.0f; md = glm::normalize(md);
+        float yawDeg = glm::degrees(std::atan2(md.x, -md.z));
+        m_Player.SetTargetYaw(yawDeg);
     }
 
     // Update player physics / animation with dt

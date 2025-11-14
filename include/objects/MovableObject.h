@@ -28,6 +28,9 @@ public:
     float GetYaw() const { return yaw; }
     void SetYaw(float newYaw) { yaw = newYaw; updateVectors(); }
 
+    // Set desired facing yaw (will rotate smoothly toward this yaw)
+    void SetTargetYaw(float y);
+
     // Turn the object left/right (updates direction vectors so controls stay intuitive)
     void Turn(float degrees) {
         yaw += degrees;
@@ -52,4 +55,9 @@ private:
     // Animation state
     float animPhase = 0.0f; // advances when moving
     float animSpeed = 6.0f;
+    // Smooth yaw targeting
+    float targetYaw = 0.0f;
+    float yawTurnSpeed = 240.0f; // degrees per second max turn
+
+    // (targetYaw is set via SetTargetYaw publicly)
 };
