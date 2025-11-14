@@ -27,17 +27,7 @@ sudo apt install -y build-essential libglfw3-dev libglew-dev libglm-dev
 ## Build & Run
 Single command build (no CMake required):
 ```
-g++ -Iinclude \
-    src/main.cpp \
-    src/core/Application.cpp \
-    src/scenes/PlayScene.cpp \
-    src/terrain.cpp \
-    src/objects.cpp \
-    src/utils.cpp \
-    src/objects/MovableObject.cpp \
-    src/camera/Camera.cpp \
-    src/skybox/skybox.cpp \
-    -lGL -lGLU -lGLEW -lglfw -o terrain
+g++ -Iinclude $(find src -name '*.cpp') -lGL -lGLU -lGLEW -lglfw -o terrain && ./terrain
 ```
 
 ## Project Structure
