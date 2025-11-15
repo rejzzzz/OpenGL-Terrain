@@ -7,53 +7,87 @@
 #include <vector>
 #include <cmath>
 #include <algorithm>
+#include <string>
+#include "stb_image.h"
 
 #include "../include/terrain.h"
 #include "../include/objects.h"
 
+// Static texture handles for buildings (0=none, 1=brick, 2=metal)
+static GLuint g_buildingTextures[3] = {0, 0, 0};
+
 bool isPositionInsideBuilding(float x, float z, float radius);
+
+// Simple texture loader for building diffuse
+void initBuildingTexture(const std::string &path, int textureType) {
+    if (textureType < 0 || textureType > 2) return;
+    
+    if (g_buildingTextures[textureType]) {
+        glDeleteTextures(1, &g_buildingTextures[textureType]);
+        g_buildingTextures[textureType] = 0;
+    }
+
+    int width, height, nrChannels;
+    unsigned char *data = stbi_load(path.c_str(), &width, &height, &nrChannels, 0);
+    if (!data) {
+        printf("Failed to load building texture: %s\n", path.c_str());
+        return;
+    }
+
+    GLenum format = (nrChannels == 4) ? GL_RGBA : GL_RGB;
+    glGenTextures(1, &g_buildingTextures[textureType]);
+    glBindTexture(GL_TEXTURE_2D, g_buildingTextures[textureType]);
+    glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+    glGenerateMipmap(GL_TEXTURE_2D);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    stbi_image_free(data);
+    printf("Loaded building texture type %d: %s (%dx%d, %d channels)\n", textureType, path.c_str(), width, height, nrChannels);
+}
+
+void initBuildingTextures(const std::string &brickPath, const std::string &metalPath) {
+    initBuildingTexture(brickPath, 1);
+    initBuildingTexture(metalPath, 2);
+}
 
 static void drawCube(float width, float height, float depth, bool shaded = false) {
     float w2 = width * 0.5f;
     float h2 = height * 0.5f;
     float d2 = depth * 0.5f;
     glBegin(GL_QUADS);
-    if (shaded) glColor3f(0.6f, 0.6f, 0.6f);
     // front
-    glVertex3f(-w2, -h2,  d2);
-    glVertex3f( w2, -h2,  d2);
-    glVertex3f( w2,  h2,  d2);
-    glVertex3f(-w2,  h2,  d2);
+    glTexCoord2f(0.0f, 0.0f); glVertex3f(-w2, -h2,  d2);
+    glTexCoord2f(1.0f, 0.0f); glVertex3f( w2, -h2,  d2);
+    glTexCoord2f(1.0f, 1.0f); glVertex3f( w2,  h2,  d2);
+    glTexCoord2f(0.0f, 1.0f); glVertex3f(-w2,  h2,  d2);
     // back
-    if (shaded) glColor3f(0.6f, 0.6f, 0.6f);
-    glVertex3f(-w2, -h2, -d2);
-    glVertex3f(-w2,  h2, -d2);
-    glVertex3f( w2,  h2, -d2);
-    glVertex3f( w2, -h2, -d2);
+    glTexCoord2f(1.0f, 0.0f); glVertex3f(-w2, -h2, -d2);
+    glTexCoord2f(1.0f, 1.0f); glVertex3f(-w2,  h2, -d2);
+    glTexCoord2f(0.0f, 1.0f); glVertex3f( w2,  h2, -d2);
+    glTexCoord2f(0.0f, 0.0f); glVertex3f( w2, -h2, -d2);
     // top
-    if (shaded) glColor3f(0.7f, 0.7f, 0.7f);
-    glVertex3f(-w2,  h2, -d2);
-    glVertex3f(-w2,  h2,  d2);
-    glVertex3f( w2,  h2,  d2);
-    glVertex3f( w2,  h2, -d2);
+    glTexCoord2f(0.0f, 1.0f); glVertex3f(-w2,  h2, -d2);
+    glTexCoord2f(0.0f, 0.0f); glVertex3f(-w2,  h2,  d2);
+    glTexCoord2f(1.0f, 0.0f); glVertex3f( w2,  h2,  d2);
+    glTexCoord2f(1.0f, 1.0f); glVertex3f( w2,  h2, -d2);
     // bottom
-    if (shaded) glColor3f(0.5f, 0.5f, 0.5f);
-    glVertex3f(-w2, -h2, -d2);
-    glVertex3f( w2, -h2, -d2);
-    glVertex3f( w2, -h2,  d2);
-    glVertex3f(-w2, -h2,  d2);
+    glTexCoord2f(1.0f, 1.0f); glVertex3f(-w2, -h2, -d2);
+    glTexCoord2f(0.0f, 1.0f); glVertex3f( w2, -h2, -d2);
+    glTexCoord2f(0.0f, 0.0f); glVertex3f( w2, -h2,  d2);
+    glTexCoord2f(1.0f, 0.0f); glVertex3f(-w2, -h2,  d2);
     // right
-    if (shaded) glColor3f(0.65f, 0.65f, 0.65f);
-    glVertex3f( w2, -h2, -d2);
-    glVertex3f( w2,  h2, -d2);
-    glVertex3f( w2,  h2,  d2);
-    glVertex3f( w2, -h2,  d2);
+    glTexCoord2f(0.0f, 0.0f); glVertex3f( w2, -h2, -d2);
+    glTexCoord2f(1.0f, 0.0f); glVertex3f( w2,  h2, -d2);
+    glTexCoord2f(1.0f, 1.0f); glVertex3f( w2,  h2,  d2);
+    glTexCoord2f(0.0f, 1.0f); glVertex3f( w2, -h2,  d2);
     // left
-    if (shaded) glColor3f(0.65f, 0.65f, 0.65f);
-    glVertex3f(-w2, -h2, -d2);
-    glVertex3f(-w2, -h2,  d2);
-    glVertex3f(-w2,  h2,  d2);
-    glVertex3f(-w2,  h2, -d2);
+    glTexCoord2f(0.0f, 0.0f); glVertex3f(-w2, -h2, -d2);
+    glTexCoord2f(1.0f, 0.0f); glVertex3f(-w2, -h2,  d2);
+    glTexCoord2f(1.0f, 1.0f); glVertex3f(-w2,  h2,  d2);
+    glTexCoord2f(0.0f, 1.0f); glVertex3f(-w2,  h2, -d2);
     glEnd();
 }
 
@@ -707,9 +741,22 @@ static void drawBuildingAt(float wx, float wz, float bw, float bh, float bd, con
     glPushMatrix();
     glTranslatef(wx, wy, wz);
 
-    // body
-    glColor3f(0.6f, 0.6f, 0.6f);
+    // body with optional texture based on building type
+    // For now, randomly use type 0, 1, or 2 based on position (deterministic)
+    int buildingType = ((int)(wx + wz) % 3); // 0=none, 1=brick, 2=metal
+    
+    if (buildingType > 0 && g_buildingTextures[buildingType]) {
+        glEnable(GL_TEXTURE_2D);
+        glBindTexture(GL_TEXTURE_2D, g_buildingTextures[buildingType]);
+        glColor3f(1.0f, 1.0f, 1.0f);
+    } else {
+        glColor3f(0.6f, 0.6f, 0.6f);
+    }
     drawCube(bw, bh, bd, true);
+    if (buildingType > 0 && g_buildingTextures[buildingType]) {
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glDisable(GL_TEXTURE_2D);
+    }
 
     float halfW = bw * 0.5f, halfH = bh * 0.5f, halfD = bd * 0.5f;
     int rows = std::max(1, (int)std::floor(bh));

@@ -39,6 +39,9 @@ void PlayScene::OnAttach(GLFWwindow* window) {
     glEnable(GL_COLOR_MATERIAL);
     glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
 
+    // Load building textures (type 1=brick, type 2=metal)
+    initBuildingTextures("assets/building_diffuse.png", "assets/building_metal.png");
+
     // Add multiple mountains across the terrain for variety
     // Keep the mountain list empty here; border mountains are added below to frame the scene
     terrainClearMountains();
