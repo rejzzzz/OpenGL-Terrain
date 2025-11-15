@@ -11,6 +11,8 @@
 #include "../include/terrain.h"
 #include "../include/objects.h"
 
+bool isPositionInsideBuilding(float x, float z, float radius);
+
 static void drawCube(float width, float height, float depth, bool shaded = false) {
     float w2 = width * 0.5f;
     float h2 = height * 0.5f;
@@ -425,6 +427,8 @@ void drawBuildings() {
 void addBuilding(const BuildingDef &b) { s_buildings.push_back(b); }
 void clearBuildings() { s_buildings.clear(); }
 
+const std::vector<BuildingDef>& getBuildings() { ensureBuildingsInitialized(); return s_buildings; }
+
 bool isPositionInsideBuilding(float x, float z, float radius) {
     ensureBuildingsInitialized();
     for (const auto &b : s_buildings) {
@@ -439,6 +443,8 @@ bool isPositionInsideBuilding(float x, float z, float radius) {
 
 void addRoad(const Road &r) { s_roads.push_back(r); }
 void clearRoads() { s_roads.clear(); }
+
+const std::vector<Road>& getRoads() { return s_roads; }
 
 void drawRoads() {
     const float sampleSpacing = 0.5f;

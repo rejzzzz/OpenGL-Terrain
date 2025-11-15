@@ -2,11 +2,13 @@
 #include <GL/glu.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
+#include <cmath>
 
 #include <vector>
 #include <string>
 #include "skybox/skybox.h"
 #include "../../include/city/City.h"
+#include "../../include/objects.h"
 
 PlayScene::PlayScene()
     : m_Player(0.0f,0.0f,0.0f), m_Camera(&m_Player) {
@@ -193,6 +195,7 @@ void PlayScene::OnRender() {
     m_Player.Draw();
 
     // Draw HUD: numeric coin counter (top-left) using a simple 7-segment style
+    glDisable(GL_DEPTH_TEST);
     int w,h; glfwGetFramebufferSize(m_Window, &w, &h);
     int collected = getCollectedCoinsCount();
     int total = getTotalCoinsCount();
@@ -264,7 +267,62 @@ void PlayScene::OnRender() {
     int baseX = slashX + 16;
     for (size_t i=0;i<right.size();++i){ int d = right[i]-'0'; drawDigit(baseX + i*(segH+segW+4), iconY, segW, segH, d); }
 
+    // Draw mini-map in top-right corner
+    {
+        int mapSize = 150;
+        int mapX = w - mapSize - 10;
+        int mapY = 10;
+        float mapRadius = 40.0f; // world units radius
+        float scale = mapSize / (2 * mapRadius);
+
+        // Draw map background
+        glColor3f(0.5f, 0.5f, 0.5f);
+        glBegin(GL_QUADS);
+        glVertex2i(mapX, mapY);
+        glVertex2i(mapX + mapSize, mapY);
+        glVertex2i(mapX + mapSize, mapY + mapSize);
+        glVertex2i(mapX, mapY + mapSize);
+        glEnd();
+
+        // Get player position
+        glm::vec3 playerPos = m_Player.GetPosition();
+        float playerYaw = m_Player.GetYaw();
+
+        // Draw buildings
+        glColor3f(0.7f, 0.7f, 0.7f);
+        const auto& buildings = getBuildings();
+        for (const auto& b : buildings) {
+            float dx = b.x - playerPos.x;
+            float dz = b.z - playerPos.z;
+            if (std::fabs(dx) > mapRadius || std::fabs(dz) > mapRadius) continue;
+            float px = mapX + mapSize/2 + dx * scale;
+            float pz = mapY + mapSize/2 + dz * scale;
+            float bw = b.bw * scale;
+            float bd = b.bd * scale;
+            glBegin(GL_QUADS);
+            glVertex2f(px - bw/2, pz - bd/2);
+            glVertex2f(px + bw/2, pz - bd/2);
+            glVertex2f(px + bw/2, pz + bd/2);
+            glVertex2f(px - bw/2, pz + bd/2);
+            glEnd();
+        }
+
+        // Draw player as a triangle pointing in facing direction
+        glColor3f(1.0f, 0.0f, 0.0f);
+        float playerSize = 10.0f;
+        float px = mapX + mapSize/2;
+        float pz = mapY + mapSize/2;
+        float dirX = std::sin(glm::radians(playerYaw));
+        float dirZ = std::cos(glm::radians(playerYaw));
+        glBegin(GL_TRIANGLES);
+        glVertex2f(px + dirX * playerSize, pz + dirZ * playerSize);
+        glVertex2f(px + dirZ * playerSize * 0.5f - dirX * playerSize * 0.5f, pz - dirX * playerSize * 0.5f - dirZ * playerSize * 0.5f);
+        glVertex2f(px - dirZ * playerSize * 0.5f - dirX * playerSize * 0.5f, pz + dirX * playerSize * 0.5f - dirZ * playerSize * 0.5f);
+        glEnd();
+    }
+
     // restore matrices
     glPopMatrix(); glMatrixMode(GL_PROJECTION); glPopMatrix(); glMatrixMode(GL_MODELVIEW);
+    glEnable(GL_DEPTH_TEST);
 }
 // (Removed stray example code; buildings are drawn via drawBuildings())

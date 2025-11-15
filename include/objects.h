@@ -43,6 +43,12 @@ void drawStreetLights();
 void addBuilding(const BuildingDef &b);
 void clearBuildings();
 
+// Accessor for buildings
+const std::vector<BuildingDef>& getBuildings();
+
+// Accessor for roads
+const std::vector<Road>& getRoads();
+
 // Collision query: returns true if a circle centered at (x,z) with given radius
 // would intersect any building footprint. Used to prevent player entering buildings.
 bool isPositionInsideBuilding(float x, float z, float radius);
