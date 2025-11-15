@@ -140,18 +140,45 @@ static void drawDiskAnnulus(float cx, float cz, float innerRadius, float outerRa
     glEnd();
 }
 
-// Draw a perfectly planar disk (flat water surface) at constant y so water doesn't follow
-// irregular terrain heights (this avoids wedge/striping on sloped terrain).
-static void drawPlanarDisk(float cx, float cz, float radius, float y, int segments = 64) {
+// Draw water surface with depth gradient (darker in center, lighter at edges)
+static void drawWaterSurface(float cx, float cz, float radius, float baseY, int segments = 64) {
+    // Create a bowl-shaped depression for more realistic water
+    const float depthFactor = 0.8f;  // How deep the center dips
+    
     glBegin(GL_TRIANGLE_FAN);
-    glVertex3f(cx, y, cz);
+    // Center vertex - deepest, darkest blue
+    glColor4f(0.02f, 0.25f, 0.6f, 0.85f);
+    glVertex3f(cx, baseY - depthFactor, cz);
+    
+    // Outer ring - lighter blue, shallower
     for (int i = 0; i <= segments; ++i) {
         float a = (float)i / (float)segments * 2.0f * 3.14159265f;
         float x = cx + std::cos(a) * radius;
         float z = cz + std::sin(a) * radius;
-        glVertex3f(x, y, z);
+        // Lighter color at edges
+        glColor4f(0.1f, 0.5f, 0.85f, 0.7f);
+        glVertex3f(x, baseY - depthFactor * 0.2f, z);
     }
     glEnd();
+    
+    // Add subtle ripple rings for visual interest
+    glLineWidth(1.0f);
+    for (int ring = 1; ring <= 3; ++ring) {
+        float rippleRadius = radius * (0.3f + ring * 0.2f);
+        if (rippleRadius >= radius) break;
+        float rippleY = baseY - depthFactor * (1.0f - rippleRadius / radius);
+        
+        glColor4f(0.15f, 0.6f, 0.9f, 0.3f);
+        glBegin(GL_LINE_LOOP);
+        for (int i = 0; i < segments; ++i) {
+            float a = (float)i / (float)segments * 2.0f * 3.14159265f;
+            float x = cx + std::cos(a) * rippleRadius;
+            float z = cz + std::sin(a) * rippleRadius;
+            glVertex3f(x, rippleY, z);
+        }
+        glEnd();
+    }
+    glLineWidth(1.0f);
 }
 
 // helper: 2D point-segment distance
@@ -181,28 +208,28 @@ void drawPonds() {
     for (const auto &pp : s_ponds) {
         const glm::vec2 &c = pp.first;
         float r = pp.second;
-        // water surface
-        // enable alpha for slightly translucent water
-        // Determine a flat water level based on base terrain at the pond center
-        float centerBase = getTerrainBaseHeight(c.x, c.y);
-        // choose a reasonable max depth depending on radius
-        float maxDepth = std::min(3.0f, r * 0.35f);
-        float waterY = centerBase - maxDepth + 0.002f;
-
-        // draw flat water disk at waterY (planar) so it looks uniform
+        
+        // Determine base water level at pond center
+        float centerHeight = getTerrainHeight(c.x, c.y);
+        float waterY = centerHeight + 3.5f;  // Raised higher for better visibility
+        
+        // Draw sandy/muddy shore band (wider and more natural looking)
+        glColor3f(0.72f, 0.6f, 0.42f);  // Sandy beach color
+        drawDiskAnnulus(c.x, c.y, r * 0.95f, r + 1.2f, 32);
+        
+        // Draw darker wet sand/mud transition
+        glColor3f(0.45f, 0.35f, 0.25f);  // Wet sand
+        drawDiskAnnulus(c.x, c.y, r * 0.92f, r * 0.95f, 24);
+        
+        // Draw water surface with depth and transparency
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        glEnable(GL_POLYGON_OFFSET_FILL);
-        glPolygonOffset(-1.0f, -1.0f);
-        glColor4f(0.05f, 0.45f, 0.9f, 0.95f);
-        drawPlanarDisk(c.x, c.y, r, waterY, 128);
-        glDisable(GL_POLYGON_OFFSET_FILL);
+        glDepthMask(GL_FALSE);  // Don't write to depth buffer for transparent water
+        
+        drawWaterSurface(c.x, c.y, r * 0.92f, waterY, 64);
+        
+        glDepthMask(GL_TRUE);
         glDisable(GL_BLEND);
-
-        // small shore ring (annulus) - draw slightly above water to show rim
-        // use a muddy/brown shore color instead of bright green so it doesn't conflict with roads
-        glColor3f(0.28f, 0.20f, 0.12f);
-        drawDiskAnnulus(c.x, c.y, r, r + 0.08f, 48);
     }
 }
 
@@ -261,9 +288,17 @@ void drawTrees() {
 
 static void ensureTreesInitialized() {
     if (!s_trees.empty()) return;
-    s_trees.push_back({5.0f, 5.0f});
-    s_trees.push_back({-6.0f, 3.0f});
-    s_trees.push_back({2.0f, -7.0f});
+    // Only add trees that are far from the lake at (-25, 25)
+    glm::vec2 lakePos(-25.0f, 25.0f);
+    float lakeRad = 10.0f;
+    
+    std::vector<glm::vec2> candidates = {{5.0f, 5.0f}, {-6.0f, 3.0f}, {2.0f, -7.0f}};
+    for (const auto& pos : candidates) {
+        float distToLake = std::sqrt((pos.x - lakePos.x)*(pos.x - lakePos.x) + (pos.y - lakePos.y)*(pos.y - lakePos.y));
+        if (distToLake > lakeRad + 5.0f) {
+            s_trees.push_back(pos);
+        }
+    }
 }
 
 // Coins storage (defined here where s_roads is visible)
@@ -352,6 +387,13 @@ void spawnCoins(int n, float areaRadius) {
         if (!ok) continue;
         // final sanity: ensure within areaRadius
         if (std::sqrt(x*x + z*z) > areaRadius * 1.05f) continue;
+        
+        // Avoid placing coins in the lake area
+        glm::vec2 lakePos(-25.0f, 25.0f);
+        float lakeRad = 10.0f;
+        float distToLake = std::sqrt((x - lakePos.x)*(x - lakePos.x) + (z - lakePos.y)*(z - lakePos.y));
+        if (distToLake < lakeRad + 5.0f) continue;
+        
         s_coins.push_back(Coin{glm::vec2(x,z), false});
         ++placed;
     }
@@ -368,7 +410,7 @@ void drawCoins() {
     t = glfwGetTime();
 #endif
     // helper: draw a thin vertical coin (circular faces in Y-Z plane, thickness along X)
-    auto drawVerticalCoin = [](float radius, float halfThickness, int segments = 32) {
+    auto drawVerticalCoin = [](float radius, float halfThickness, int segments = 16) {  // Reduced from 32 to 16 for performance
         // front face (x = +halfThickness)
         glBegin(GL_TRIANGLE_FAN);
         glVertex3f(halfThickness, 0.0f, 0.0f);
@@ -420,7 +462,7 @@ void drawCoins() {
         glRotatef(spin, 0.0f, 1.0f, 0.0f);
         // coin faces are in Y-Z plane (vertical), thickness along X
         glColor3f(0.95f, 0.8f, 0.1f);
-        drawVerticalCoin(coinRadius, 0.04f, 48);
+        drawVerticalCoin(coinRadius, 0.04f, 16);  // Reduced from 48 to 16 for performance
         // small highlight: a slightly smaller lighter disc on the front face
         glPushMatrix();
         glTranslatef(0.045f, 0.0f, 0.0f); // place on front face
@@ -428,8 +470,8 @@ void drawCoins() {
         // draw a slightly smaller circular patch
         glBegin(GL_TRIANGLE_FAN);
         glVertex3f(0.0f, 0.0f, 0.0f);
-        for (int i = 0; i <= 48; ++i) {
-            float a = (float)i / 48.0f * 2.0f * 3.14159265f;
+        for (int i = 0; i <= 12; ++i) {  // Reduced from 48 to 12 for performance
+            float a = (float)i / 12.0f * 2.0f * 3.14159265f;
             float yv = std::cos(a) * (coinRadius * 0.6f);
             float zv = std::sin(a) * (coinRadius * 0.6f);
             glVertex3f(0.0f, yv, zv);
@@ -764,28 +806,26 @@ static void drawBuildingAt(float wx, float wz, float bw, float bh, float bd, con
     float ww = std::min(0.5f, bw * 0.25f);
     float wh = std::min(0.6f, bh * 0.18f);
 
-    // glass
+    // glass - batch all windows into single draw call for better performance
     glColor3f(windowColor.r, windowColor.g, windowColor.b);
+    glBegin(GL_QUADS);
     for (int row = 0; row < rows; ++row) {
         for (int col = 0; col < cols; ++col) {
             float lx = -halfW + 0.6f + col * (bw - 1.2f);
             float ly = -halfH + 0.6f + row * 0.9f;
             float zoff = halfD + 0.002f;
-            glBegin(GL_QUADS);
             glVertex3f(lx - ww*0.5f, ly - wh*0.5f,  zoff);
             glVertex3f(lx + ww*0.5f, ly - wh*0.5f,  zoff);
             glVertex3f(lx + ww*0.5f, ly + wh*0.5f,  zoff);
             glVertex3f(lx - ww*0.5f, ly + wh*0.5f,  zoff);
-            glEnd();
             // back window
-            glBegin(GL_QUADS);
             glVertex3f(-lx - ww*0.5f, ly - wh*0.5f, -zoff);
             glVertex3f(-lx + ww*0.5f, ly - wh*0.5f, -zoff);
             glVertex3f(-lx + ww*0.5f, ly + wh*0.5f, -zoff);
             glVertex3f(-lx - ww*0.5f, ly + wh*0.5f, -zoff);
-            glEnd();
         }
     }
+    glEnd();
 
     // frame lines
     glColor3f(0.1f,0.1f,0.1f);

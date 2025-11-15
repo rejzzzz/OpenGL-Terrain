@@ -16,16 +16,19 @@ void MovableObject::MoveForward(float amount) {
     glm::vec3 proposed = position + forward * amount;
     // Keep movement confined to XZ; radius of player for collision
     const float radius = 0.6f; // slightly larger to prevent entering thin building edges
-    // Terrain bounds (match drawTerrain grid: SIZE=256, SPACING=0.5)
-    const int TERRAIN_SIZE = 200;
-    const float SPACING = 0.5f;
-    const float minX = -((TERRAIN_SIZE/2) * SPACING);
-    const float minZ = -((TERRAIN_SIZE/2) * SPACING);
-    const float maxX = ((TERRAIN_SIZE/2) - 1) * SPACING;
-    const float maxZ = ((TERRAIN_SIZE/2) - 1) * SPACING;
-    // Clamp to terrain bounds
-    proposed.x = std::max(minX, std::min(maxX, proposed.x));
-    proposed.z = std::max(minZ, std::min(maxZ, proposed.z));
+    // Terrain bounds (match drawTerrain grid: SIZE=120, SPACING=0.75)
+    const int TERRAIN_SIZE = 120;
+    const float SPACING = 0.75f;
+    const float minX = -((TERRAIN_SIZE/2) * SPACING) + radius;
+    const float minZ = -((TERRAIN_SIZE/2) * SPACING) + radius;
+    const float maxX = ((TERRAIN_SIZE/2) - 1) * SPACING - radius;
+    const float maxZ = ((TERRAIN_SIZE/2) - 1) * SPACING - radius;
+    
+    // Check bounds first
+    if (proposed.x < minX || proposed.x > maxX || proposed.z < minZ || proposed.z > maxZ) {
+        return; // Don't move if out of bounds
+    }
+    
     // Check building collision; if not colliding, accept move
     if (!isPositionInsideBuilding(proposed.x, proposed.z, radius)) {
         position = proposed;
@@ -36,14 +39,19 @@ void MovableObject::MoveForward(float amount) {
 void MovableObject::MoveRight(float amount) {
     glm::vec3 proposed = position + right * amount;
     const float radius = 0.6f;
-    const int TERRAIN_SIZE = 200;
-    const float SPACING = 0.5f;
-    const float minX = -((TERRAIN_SIZE/2) * SPACING);
-    const float minZ = -((TERRAIN_SIZE/2) * SPACING);
-    const float maxX = ((TERRAIN_SIZE/2) - 1) * SPACING;
-    const float maxZ = ((TERRAIN_SIZE/2) - 1) * SPACING;
-    proposed.x = std::max(minX, std::min(maxX, proposed.x));
-    proposed.z = std::max(minZ, std::min(maxZ, proposed.z));
+    const int TERRAIN_SIZE = 120;
+    const float SPACING = 0.75f;
+    const float minX = -((TERRAIN_SIZE/2) * SPACING) + radius;
+    const float minZ = -((TERRAIN_SIZE/2) * SPACING) + radius;
+    const float maxX = ((TERRAIN_SIZE/2) - 1) * SPACING - radius;
+    const float maxZ = ((TERRAIN_SIZE/2) - 1) * SPACING - radius;
+    
+    // Check bounds first
+    if (proposed.x < minX || proposed.x > maxX || proposed.z < minZ || proposed.z > maxZ) {
+        return; // Don't move if out of bounds
+    }
+    
+    // Check building collision; if not colliding, accept move
     if (!isPositionInsideBuilding(proposed.x, proposed.z, radius)) {
         position = proposed;
         stayOnTerrain();
@@ -56,14 +64,19 @@ void MovableObject::MoveInDirection(const glm::vec3& direction, float amount) {
     glm::vec3 moveDir = glm::vec3(normalizedDir.x, 0.0f, normalizedDir.z);
     glm::vec3 proposed = position + moveDir * amount;
     const float radius = 0.6f;
-    const int TERRAIN_SIZE = 200;
-    const float SPACING = 0.5f;
-    const float minX = -((TERRAIN_SIZE/2) * SPACING);
-    const float minZ = -((TERRAIN_SIZE/2) * SPACING);
-    const float maxX = ((TERRAIN_SIZE/2) - 1) * SPACING;
-    const float maxZ = ((TERRAIN_SIZE/2) - 1) * SPACING;
-    proposed.x = std::max(minX, std::min(maxX, proposed.x));
-    proposed.z = std::max(minZ, std::min(maxZ, proposed.z));
+    const int TERRAIN_SIZE = 120;
+    const float SPACING = 0.75f;
+    const float minX = -((TERRAIN_SIZE/2) * SPACING) + radius;
+    const float minZ = -((TERRAIN_SIZE/2) * SPACING) + radius;
+    const float maxX = ((TERRAIN_SIZE/2) - 1) * SPACING - radius;
+    const float maxZ = ((TERRAIN_SIZE/2) - 1) * SPACING - radius;
+    
+    // Check bounds first
+    if (proposed.x < minX || proposed.x > maxX || proposed.z < minZ || proposed.z > maxZ) {
+        return; // Don't move if out of bounds
+    }
+    
+    // Check building collision; if not colliding, accept move
     if (!isPositionInsideBuilding(proposed.x, proposed.z, radius)) {
         position = proposed;
         stayOnTerrain();
@@ -207,19 +220,22 @@ void MovableObject::Update(float dt) {
     // Attempt to move by velocity*dt, with collision check
     glm::vec3 proposed = position + velocity * dt;
     const float radius = 0.6f;
-    const int TERRAIN_SIZE = 200;
-    const float SPACING = 0.5f;
-    const float minX = -((TERRAIN_SIZE/2) * SPACING);
-    const float minZ = -((TERRAIN_SIZE/2) * SPACING);
-    const float maxX = ((TERRAIN_SIZE/2) - 1) * SPACING;
-    const float maxZ = ((TERRAIN_SIZE/2) - 1) * SPACING;
-    proposed.x = std::max(minX, std::min(maxX, proposed.x));
-    proposed.z = std::max(minZ, std::min(maxZ, proposed.z));
-    if (!isPositionInsideBuilding(proposed.x, proposed.z, radius)) {
+    const int TERRAIN_SIZE = 120;
+    const float SPACING = 0.75f;
+    const float minX = -((TERRAIN_SIZE/2) * SPACING) + radius;
+    const float minZ = -((TERRAIN_SIZE/2) * SPACING) + radius;
+    const float maxX = ((TERRAIN_SIZE/2) - 1) * SPACING - radius;
+    const float maxZ = ((TERRAIN_SIZE/2) - 1) * SPACING - radius;
+    
+    // Check bounds first - if out of bounds, stop movement
+    if (proposed.x < minX || proposed.x > maxX || proposed.z < minZ || proposed.z > maxZ) {
+        velocity = glm::vec3(0.0f);
+    } else if (!isPositionInsideBuilding(proposed.x, proposed.z, radius)) {
+        // Within bounds and no collision - accept move
         position = proposed;
         stayOnTerrain();
     } else {
-        // stop on collision
+        // Building collision - stop on collision
         velocity = glm::vec3(0.0f);
     }
 

@@ -47,8 +47,8 @@ void PlayScene::OnAttach(GLFWwindow* window) {
     terrainClearMountains();
 
     // --- Border mountains recalculated to match the current terrain extents ---
-    const int TERRAIN_SIZE = 200; // must match terrain.cpp
-    const float SPACING = 0.5f;
+    const int TERRAIN_SIZE = 150; // must match terrain.cpp
+    const float SPACING = 0.6f;
     const float halfWorld = (TERRAIN_SIZE / 2) * SPACING; // e.g. 100 * 0.5 = 50.0
     const float minEdge = -halfWorld;
     const float maxEdge = (TERRAIN_SIZE/2 - 1) * SPACING;

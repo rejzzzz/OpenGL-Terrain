@@ -13,13 +13,18 @@ void generateCity(int nHouses, float areaRadius, const glm::vec2 &lakeCenter) {
     clearCity();
     // first create five main roads (store locally so we can test placement)
     clearRoads();
+    
+    // Define lake location away from center
+    glm::vec2 lakePos(-25.0f, 25.0f);  // Top-left corner area
+    float lakeRad = 10.0f;
+    
     std::vector<Road> mainRoads;
     Road r1; r1.halfWidth = 3.0f; r1.isMain = true; r1.pts.push_back(glm::vec2(0.0f, -areaRadius)); r1.pts.push_back(glm::vec2(0.0f, areaRadius)); mainRoads.push_back(r1);
     Road r2; r2.halfWidth = 3.0f; r2.isMain = true; r2.pts.push_back(glm::vec2(-areaRadius, 0.0f)); r2.pts.push_back(glm::vec2(areaRadius, 0.0f)); mainRoads.push_back(r2);
     Road r3; r3.halfWidth = 3.2f; r3.isMain = true; r3.pts.push_back(glm::vec2(-areaRadius, areaRadius)); r3.pts.push_back(glm::vec2(areaRadius, -areaRadius)); mainRoads.push_back(r3);
     Road r4; r4.halfWidth = 3.2f; r4.isMain = true; r4.pts.push_back(glm::vec2(-areaRadius, -areaRadius)); r4.pts.push_back(glm::vec2(areaRadius, areaRadius)); mainRoads.push_back(r4);
     Road r5; r5.halfWidth = 3.0f; r5.isMain = true; r5.pts.push_back(glm::vec2(areaRadius * 0.3f, -areaRadius)); r5.pts.push_back(glm::vec2(areaRadius * 0.3f, areaRadius)); mainRoads.push_back(r5);
-    // Add some side roads for village feel
+    // Add some side roads for village feel - but avoid the lake area
     Road r6; r6.halfWidth = 2.0f; r6.pts.push_back(glm::vec2(-areaRadius*0.5f, -areaRadius*0.5f)); r6.pts.push_back(glm::vec2(areaRadius*0.5f, areaRadius*0.5f)); mainRoads.push_back(r6);
     Road r7; r7.halfWidth = 2.0f; r7.pts.push_back(glm::vec2(-areaRadius*0.5f, areaRadius*0.5f)); r7.pts.push_back(glm::vec2(areaRadius*0.5f, -areaRadius*0.5f)); mainRoads.push_back(r7);
     for (const auto &mr : mainRoads) addRoad(mr);
@@ -67,6 +72,11 @@ void generateCity(int nHouses, float areaRadius, const glm::vec2 &lakeCenter) {
 
         glm::vec2 p(x,z);
         float halfExtent = std::max(bw, bd) * 0.5f;
+        
+        // Check distance from lake - ensure no building is placed near it
+        float distToLake = std::sqrt((x - lakePos.x)*(x - lakePos.x) + (z - lakePos.y)*(z - lakePos.y));
+        if (distToLake < lakeRad + 5.0f) continue;  // 5 units buffer around lake
+        
         bool ok = true;
         for (const auto &mr : mainRoads) {
             for (size_t i = 1; i < mr.pts.size(); ++i) {
@@ -87,20 +97,19 @@ void generateCity(int nHouses, float areaRadius, const glm::vec2 &lakeCenter) {
     float lakeRadius = std::max(4.0f, areaRadius * 0.25f);
     // if lakeCenter is near origin (0,0) when caller didn't set, keep previous placement
     auto vlen = [](const glm::vec2 &v){ return std::sqrt(v.x*v.x + v.y*v.y); };
-    // lake removed by user request - no pond will be created here
-    (void)lakeRadius;
-    (void)lakeCenter;
+    // Add an isolated lake away from the village
+    addPond(lakePos, lakeRad);
 
     // Add 4 street lights along the offset vertical road (mainRoads[4]) at far distances
+    // But avoid placing them near the lake
     if (mainRoads.size() >= 5) {
         float x = mainRoads[4].pts[0].x; // vertical line x coordinate
-        float z0 = -areaRadius * 0.9f;
-        float z1 = -areaRadius * 0.3f;
-        float z2 =  areaRadius * 0.3f;
-        float z3 =  areaRadius * 0.9f;
-        addStreetLight(glm::vec3(x, 0.0f, z0));
-        addStreetLight(glm::vec3(x, 0.0f, z1));
-        addStreetLight(glm::vec3(x, 0.0f, z2));
-        addStreetLight(glm::vec3(x, 0.0f, z3));
+        std::vector<float> zPositions = {-areaRadius * 0.9f, -areaRadius * 0.3f, areaRadius * 0.3f, areaRadius * 0.9f};
+        for (float z : zPositions) {
+            float distToLake = std::sqrt((x - lakePos.x)*(x - lakePos.x) + (z - lakePos.y)*(z - lakePos.y));
+            if (distToLake > lakeRad + 5.0f) {  // Only add if far from lake
+                addStreetLight(glm::vec3(x, 0.0f, z));
+            }
+        }
     }
 }

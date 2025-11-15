@@ -83,8 +83,8 @@ static float getMountainContribution(float x, float z) {
 
 void drawTerrain() {
     // Grid size (SIZE x SIZE) and spacing between vertices
-    const int SIZE = 200;        // Grid size (200x200)
-    const float SPACING = 0.5f;  // Distance between vertices
+    const int SIZE = 120;        // Optimized for smooth performance
+    const float SPACING = 0.75f; // Increased spacing to cover same area
 
     glShadeModel(GL_SMOOTH);
     glBegin(GL_QUADS);
