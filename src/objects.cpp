@@ -211,15 +211,26 @@ void drawStreetLights() {
     }
 }
 
-void drawTrees() {
-    drawTree(5.0f, 5.0f);
-    drawTree(-6.0f, 3.0f);
-    drawTree(2.0f, -7.0f);
-}
-
 // Storage for buildings and roads
 static std::vector<BuildingDef> s_buildings;
 static std::vector<Road> s_roads;
+static std::vector<glm::vec2> s_trees;
+
+static void ensureTreesInitialized();
+
+void drawTrees() {
+    ensureTreesInitialized();
+    for (const auto &t : s_trees) {
+        drawTree(t.x, t.y);
+    }
+}
+
+static void ensureTreesInitialized() {
+    if (!s_trees.empty()) return;
+    s_trees.push_back({5.0f, 5.0f});
+    s_trees.push_back({-6.0f, 3.0f});
+    s_trees.push_back({2.0f, -7.0f});
+}
 
 // Coins storage (defined here where s_roads is visible)
 struct Coin { glm::vec2 p; bool collected; };
@@ -445,6 +456,25 @@ void addRoad(const Road &r) { s_roads.push_back(r); }
 void clearRoads() { s_roads.clear(); }
 
 const std::vector<Road>& getRoads() { return s_roads; }
+
+const std::vector<glm::vec2>& getTrees() { ensureTreesInitialized(); return s_trees; }
+
+const std::vector<glm::vec3>& getStreetLights() { return s_streetLights; }
+
+const std::vector<glm::vec2>& getCoins() {
+    std::vector<glm::vec2> coins;
+    for (const auto &c : s_coins) {
+        if (!c.collected) coins.push_back(c.p);
+    }
+    // Since it's static, but to avoid copying, perhaps make it return vector<vec2> of uncollected.
+    // But for simplicity, return all.
+    static std::vector<glm::vec2> coinPos;
+    coinPos.clear();
+    for (const auto &c : s_coins) {
+        if (!c.collected) coinPos.push_back(c.p);
+    }
+    return coinPos;
+}
 
 void drawRoads() {
     const float sampleSpacing = 0.5f;

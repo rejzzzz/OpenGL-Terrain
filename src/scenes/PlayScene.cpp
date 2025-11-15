@@ -26,6 +26,8 @@ PlayScene::PlayScene()
     faces.push_back(skyboxDir + "back.png");
     
     loadSkybox(faces);
+
+    generateCity(50, 40.0f, glm::vec2(0,0));
 }
 
 void PlayScene::OnAttach(GLFWwindow* window) {
@@ -72,7 +74,7 @@ void PlayScene::OnAttach(GLFWwindow* window) {
     glm::vec2 lakeCenter = (mountainA + mountainB) * 0.5f;
     generateCity(30, 40.0f, lakeCenter);
     // spawn collectible coins around the city
-    spawnCoins(50, 40.0f);
+    spawnCoins(60, 40.0f);
 
 }
 
@@ -304,6 +306,101 @@ void PlayScene::OnRender() {
             glVertex2f(px + bw/2, pz - bd/2);
             glVertex2f(px + bw/2, pz + bd/2);
             glVertex2f(px - bw/2, pz + bd/2);
+            glEnd();
+        }
+
+        // Draw roads
+        glColor3f(0.3f, 0.3f, 0.3f);
+        const auto& roads = getRoads();
+        for (const auto& road : roads) {
+            const auto& pts = road.pts;
+            glBegin(GL_LINES);
+            for (size_t i = 0; i + 1 < pts.size(); ++i) {
+                float dx1 = pts[i].x - playerPos.x;
+                float dz1 = pts[i].y - playerPos.z;
+                float dx2 = pts[i+1].x - playerPos.x;
+                float dz2 = pts[i+1].y - playerPos.z;
+                if (std::fabs(dx1) > mapRadius || std::fabs(dz1) > mapRadius ||
+                    std::fabs(dx2) > mapRadius || std::fabs(dz2) > mapRadius) continue;
+                float px1 = mapX + mapSize/2 + dx1 * scale;
+                float pz1 = mapY + mapSize/2 + dz1 * scale;
+                float px2 = mapX + mapSize/2 + dx2 * scale;
+                float pz2 = mapY + mapSize/2 + dz2 * scale;
+                glVertex2f(px1, pz1);
+                glVertex2f(px2, pz2);
+            }
+            glEnd();
+        }
+
+        // Draw trees
+        glColor3f(0.0f, 0.8f, 0.0f);
+        const auto& trees = getTrees();
+        for (const auto& t : trees) {
+            float dx = t.x - playerPos.x;
+            float dz = t.y - playerPos.z;
+            if (std::fabs(dx) > mapRadius || std::fabs(dz) > mapRadius) continue;
+            float px = mapX + mapSize/2 + dx * scale;
+            float pz = mapY + mapSize/2 + dz * scale;
+            float size = 2.0f;
+            glBegin(GL_QUADS);
+            glVertex2f(px - size/2, pz - size/2);
+            glVertex2f(px + size/2, pz - size/2);
+            glVertex2f(px + size/2, pz + size/2);
+            glVertex2f(px - size/2, pz + size/2);
+            glEnd();
+        }
+
+        // Draw ponds
+        glColor3f(0.0f, 0.0f, 1.0f);
+        const auto& ponds = getPonds();
+        for (const auto& pond : ponds) {
+            float dx = pond.first.x - playerPos.x;
+            float dz = pond.first.y - playerPos.z;
+            if (std::fabs(dx) > mapRadius || std::fabs(dz) > mapRadius) continue;
+            float px = mapX + mapSize/2 + dx * scale;
+            float pz = mapY + mapSize/2 + dz * scale;
+            float radius = pond.second * scale;
+            glBegin(GL_QUADS);
+            glVertex2f(px - radius, pz - radius);
+            glVertex2f(px + radius, pz - radius);
+            glVertex2f(px + radius, pz + radius);
+            glVertex2f(px - radius, pz + radius);
+            glEnd();
+        }
+
+        // Draw coins
+        glColor3f(1.0f, 1.0f, 0.0f);
+        const auto& coins = getCoins();
+        for (const auto& c : coins) {
+            float dx = c.x - playerPos.x;
+            float dz = c.y - playerPos.z;
+            if (std::fabs(dx) > mapRadius || std::fabs(dz) > mapRadius) continue;
+            float px = mapX + mapSize/2 + dx * scale;
+            float pz = mapY + mapSize/2 + dz * scale;
+            float size = 2.0f;
+            glBegin(GL_QUADS);
+            glVertex2f(px - size/2, pz - size/2);
+            glVertex2f(px + size/2, pz - size/2);
+            glVertex2f(px + size/2, pz + size/2);
+            glVertex2f(px - size/2, pz + size/2);
+            glEnd();
+        }
+
+        // Draw street lights
+        glColor3f(0.4f, 0.4f, 0.4f);
+        const auto& lights = getStreetLights();
+        for (const auto& l : lights) {
+            float dx = l.x - playerPos.x;
+            float dz = l.z - playerPos.z;
+            if (std::fabs(dx) > mapRadius || std::fabs(dz) > mapRadius) continue;
+            float px = mapX + mapSize/2 + dx * scale;
+            float pz = mapY + mapSize/2 + dz * scale;
+            float size = 1.0f;
+            glBegin(GL_QUADS);
+            glVertex2f(px - size/2, pz - size/2);
+            glVertex2f(px + size/2, pz - size/2);
+            glVertex2f(px + size/2, pz + size/2);
+            glVertex2f(px - size/2, pz + size/2);
             glEnd();
         }
 

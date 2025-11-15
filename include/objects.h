@@ -49,6 +49,15 @@ const std::vector<BuildingDef>& getBuildings();
 // Accessor for roads
 const std::vector<Road>& getRoads();
 
+// Accessor for trees
+const std::vector<glm::vec2>& getTrees();
+
+// Accessor for street lights
+const std::vector<glm::vec3>& getStreetLights();
+
+// Accessor for coins
+const std::vector<glm::vec2>& getCoins();
+
 // Collision query: returns true if a circle centered at (x,z) with given radius
 // would intersect any building footprint. Used to prevent player entering buildings.
 bool isPositionInsideBuilding(float x, float z, float radius);

@@ -19,6 +19,9 @@ void generateCity(int nHouses, float areaRadius, const glm::vec2 &lakeCenter) {
     Road r3; r3.halfWidth = 3.2f; r3.isMain = true; r3.pts.push_back(glm::vec2(-areaRadius, areaRadius)); r3.pts.push_back(glm::vec2(areaRadius, -areaRadius)); mainRoads.push_back(r3);
     Road r4; r4.halfWidth = 3.2f; r4.isMain = true; r4.pts.push_back(glm::vec2(-areaRadius, -areaRadius)); r4.pts.push_back(glm::vec2(areaRadius, areaRadius)); mainRoads.push_back(r4);
     Road r5; r5.halfWidth = 3.0f; r5.isMain = true; r5.pts.push_back(glm::vec2(areaRadius * 0.3f, -areaRadius)); r5.pts.push_back(glm::vec2(areaRadius * 0.3f, areaRadius)); mainRoads.push_back(r5);
+    // Add some side roads for village feel
+    Road r6; r6.halfWidth = 2.0f; r6.pts.push_back(glm::vec2(-areaRadius*0.5f, -areaRadius*0.5f)); r6.pts.push_back(glm::vec2(areaRadius*0.5f, areaRadius*0.5f)); mainRoads.push_back(r6);
+    Road r7; r7.halfWidth = 2.0f; r7.pts.push_back(glm::vec2(-areaRadius*0.5f, areaRadius*0.5f)); r7.pts.push_back(glm::vec2(areaRadius*0.5f, -areaRadius*0.5f)); mainRoads.push_back(r7);
     for (const auto &mr : mainRoads) addRoad(mr);
 
     // helper: distance from point p to segment ab
@@ -39,7 +42,7 @@ void generateCity(int nHouses, float areaRadius, const glm::vec2 &lakeCenter) {
 
     // Now place buildings in positions that don't overlap any main road
     std::uniform_real_distribution<float> angDist(0.0f, 2.0f * 3.14159265f);
-    std::uniform_real_distribution<float> radDist(areaRadius * 0.05f, areaRadius * 0.9f);
+    std::normal_distribution<float> radDist(0.0f, areaRadius / 3.0f);
     std::uniform_real_distribution<float> sizeDist(1.0f, 3.0f);
     std::uniform_real_distribution<float> heightChoice(0.0f, 1.0f);
 
@@ -50,9 +53,10 @@ void generateCity(int nHouses, float areaRadius, const glm::vec2 &lakeCenter) {
     while (placed < nHouses && attempts < maxAttempts) {
         ++attempts;
         float a = angDist(rng);
-        float r = radDist(rng);
-        float x = cosf(a) * r;
-        float z = sinf(a) * r;
+        float r = std::abs(radDist(rng));
+        if (r < areaRadius * 0.05f || r > areaRadius * 0.9f) continue;
+        float x = r * std::cos(a);
+        float z = r * std::sin(a);
         x += (float)(std::sin((double)attempts*7.3) * 0.4);
         z += (float)(std::cos((double)attempts*11.1) * 0.4);
 
