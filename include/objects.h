@@ -5,9 +5,11 @@
 #include <glm/vec3.hpp>
 #include <glm/vec2.hpp>
 #include <vector>
+#include <string>
 
 // Building description used by the scene and city generator
-struct BuildingDef { float x; float z; float bw; float bh; float bd; glm::vec3 windowColor; };
+// type: 0 = no texture, 1 = brick, 2 = metal
+struct BuildingDef { float x; float z; float bw; float bh; float bd; glm::vec3 windowColor; int type = 0; };
 
 void drawBuildings();
 void drawTrees();
@@ -42,6 +44,9 @@ void drawStreetLights();
 // Add or clear buildings (used by city generator)
 void addBuilding(const BuildingDef &b);
 void clearBuildings();
+
+// Init building textures from file paths (type 1=brick, type 2=metal)
+void initBuildingTextures(const std::string &brickPath, const std::string &metalPath);
 
 // Accessor for buildings
 const std::vector<BuildingDef>& getBuildings();
